@@ -1,9 +1,9 @@
+import GlobalProvider from "@/lib/global-provider";
 import { useFonts } from "expo-font";
-import * as NavigationBar from "expo-navigation-bar";
 import { SplashScreen, Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "./global.css";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RootLayout() {
 	const [fontsLoaded] = useFonts({
@@ -21,18 +21,17 @@ export default function RootLayout() {
 		}
 	}, [fontsLoaded]);
 
-	useEffect(() => {
-		NavigationBar.setVisibilityAsync("hidden");
-	}, []);
-
 	if (!fontsLoaded) {
 		return null;
 	}
 
 	return (
 		<>
-			<StatusBar hidden />
-			<Stack screenOptions={{ headerShown: false }} />
+			<GlobalProvider>
+				<SafeAreaView className="flex-1 bg-brand-bgc">
+					<Stack screenOptions={{ headerShown: false }} />
+				</SafeAreaView>
+			</GlobalProvider>
 		</>
 	);
 }
