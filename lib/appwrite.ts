@@ -1,10 +1,8 @@
 import {
 	Account,
-	AppwriteException,
 	Avatars,
 	Client,
 	Databases,
-	ID,
 	OAuthProvider,
 	Query,
 	Storage,
@@ -27,6 +25,7 @@ export const config = {
 		process.env.EXPO_PUBLIC_APPWRITE_DATABASE_MULTI_STEP_PICKER,
 	databaseMultiStepPickerItems:
 		process.env.EXPO_PUBLIC_APPWRITE_DATABASE_MULTI_STEP_PICKER_ITEMS,
+	databasePowerUps: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_POWER_UPS,
 };
 
 export const client = new Client();
@@ -47,7 +46,9 @@ export async function login() {
 		try {
 			await account.get();
 			return true;
-		} catch {}
+		} catch (e) {
+			console.log(e);
+		}
 		const redirectUri = Linking.createURL("/");
 
 		const response = await account.createOAuth2Token(
@@ -78,13 +79,43 @@ export async function login() {
 	}
 }
 
-export async function logout() {
+export async function createNewUser(userId: string) {
 	try {
-		const result = await account.deleteSession("current");
+		const defaultWL = await databases.createDocument(
+			config.databaseId!,
+			config.databaseWatchlist!,
+			"unique()",
+			{
+				user_id: userId,
+				name: "Do obejrzenia",
+				is_default: true,
+			}
+		);
+
+		const friendList = await databases.createDocument(
+			config.databaseId!,
+			config.databaseFriends!,
+			"unique()",
+			{
+				user_id: userId,
+				friends_ids: [],
+			}
+		);
+
+		const result = await databases.createDocument(
+			config.databaseId!,
+			config.databaseUser!,
+			userId,
+			{
+				name: "New User",
+				watchlist_main: defaultWL.$id,
+				friends: friendList.$id,
+			}
+		);
 		return result;
 	} catch (error) {
-		console.error(error);
-		return false;
+		console.log(error);
+		return null;
 	}
 }
 
@@ -107,93 +138,50 @@ export async function getCurrentUser() {
 	}
 }
 
-export async function createNewUser(userId: string) {
-	try {
-		const defaultWL = await databases.createDocument(
-			config.databaseId!,
-			config.databaseWatchlist!,
-			"unique()",
-			{
-				user_id: userId,
-				name: "Do obejrzenia",
-				is_default: true,
-			}
-		);
-
-		const friendList = await createNewFriendsList(userId);
-
-		const result = await databases.createDocument(
-			config.databaseId!,
-			config.databaseUser!,
-			"unique()",
-			{
-				accountId: userId,
-				name: "New User",
-				watchList: [defaultWL.$id],
-				friends_list: friendList,
-			}
-		);
-		return result;
-	} catch (error) {
-		console.log(error);
-		return null;
-	}
-}
-
-export async function ensureMyProfile() {
-	const me = await account.get();
-	const owner = me.$id;
-	console.log("ensureMyProfile", owner);
-
-	const res = await databases.listDocuments(
-		config.databaseId!,
-		config.databaseUser!,
-		[Query.equal("accountId", owner), Query.limit(1)]
-	);
-	if (res.documents.length > 0) {
-		return res.documents[0];
-	}
-	const doc = await databases.createDocument(
-		config.databaseId!,
-		config.databaseUser!,
-		ID.unique(),
-		{
-			accountId: owner,
-			name: me.name || "New User",
-		}
-	);
-
-	return doc;
-}
-
 export async function getMyProfile() {
 	const me = await account.get();
 	const res = await databases.listDocuments(
 		config.databaseId!,
 		config.databaseUser!,
-		[Query.equal("accountId", me.$id), Query.limit(1)]
+		[Query.equal("$id", me.$id), Query.limit(1)]
 	);
 	return res.documents[0] ?? null;
 }
 
-export async function updateMyName(newName: string) {
+// WATCHLIST
+
+export async function getMyWatchlists() {
 	const me = await account.get();
-	const res = await databases.listDocuments(
+
+	return databases.listDocuments(
 		config.databaseId!,
-		config.databaseUser!,
-		[Query.equal("accountId", me.$id), Query.limit(1)]
-	);
-	if (res.documents.length === 0) throw new Error("Profile not found");
-	const doc = res.documents[0];
-	return databases.updateDocument(
-		config.databaseId!,
-		config.databaseUser!,
-		doc.$id,
-		{ name: newName }
+		config.databaseWatchlist!,
+		[Query.equal("user_id", me.$id)]
 	);
 }
 
-// WATCHLIST
+export async function createCustomWatchlist(name: string, tmdb_id?: number) {
+	try {
+		const me = await getMyProfile();
+		const watchlist = await databases.createDocument(
+			config.databaseId!,
+			config.databaseWatchlist!,
+			"unique()",
+			{
+				user_id: me.$id,
+				name,
+				is_default: false,
+			}
+		);
+		if (tmdb_id) {
+			await addToWatchlist(watchlist.$id, tmdb_id);
+		}
+		return watchlist;
+	} catch (e) {
+		console.log("ERROR occurs in createCustomWatchlist: ", e);
+		return null;
+	}
+}
 
 export async function getWatchlistItems(watchList_id: string) {
 	return databases.listDocuments(
@@ -206,45 +194,32 @@ export async function getWatchlistItems(watchList_id: string) {
 export async function addToWatchlist(watchList_id: string, tmdb_id: number) {
 	const docId = `${watchList_id}_${tmdb_id}`;
 	try {
-		return await databases.createDocument(
+		const item = await databases.createDocument(
 			config.databaseId!,
 			config.databaseWatchlistItems!,
 			docId,
 			{ watchList_id, tmdb_id }
 		);
+
+		const current = await databases.getDocument(
+			config.databaseId!,
+			config.databaseWatchlist!,
+			watchList_id
+		);
+		return await databases.updateDocument(
+			config.databaseId!,
+			config.databaseWatchlist!,
+			watchList_id,
+			{
+				watchListItems: [...current.watchListItems, item.$id],
+			}
+		);
 	} catch (e) {
-		const err = e as AppwriteException;
-		if (err.code === 409) {
-			const res = await databases.listDocuments(
-				config.databaseId!,
-				config.databaseWatchlistItems!,
-				[
-					Query.equal("watchList_id", watchList_id),
-					Query.equal("tmdb_id", tmdb_id),
-				]
-			);
-			return res.documents[0];
-		}
-		throw err;
+		console.log("ERROR: ", e);
 	}
 }
 
 // FRIENDS
-
-export async function createNewFriendsList(user_id: string) {
-	try {
-		const res = await databases.createDocument(
-			config.databaseId!,
-			config.databaseFriends!,
-			"unique()",
-			{
-				user_id: user_id,
-				friends_ids: [],
-			}
-		);
-		return res.$id;
-	} catch {}
-}
 
 export async function findProfileById(profileId: string) {
 	try {
@@ -259,7 +234,7 @@ export async function findProfileById(profileId: string) {
 
 export async function addUserToFriends(friendId: string) {
 	const me = await getMyProfile();
-	const friendListId = me.friends_list.$id;
+	const friendListId = me.friends.$id;
 
 	const current = await databases.getDocument(
 		config.databaseId!,
@@ -303,22 +278,144 @@ export async function getMyFriends() {
 
 // MULTI STEP PICKER
 
-export async function createSession(ownerId: string) {
+export async function createSession(ownerId: string, guestsIds: string[]) {
+	const allUsers = [ownerId, ...guestsIds];
+	const powerUps = await Promise.all(
+		allUsers.map((user_id) =>
+			databases.createDocument(
+				config.databaseId!,
+				config.databasePowerUps!,
+				"unique()",
+				{ user_id }
+			)
+		)
+	);
 	const session = await databases.createDocument(
 		config.databaseId!,
 		config.databaseMultiStepPicker!,
 		"unique()",
-		{ ownerId }
+		{ ownerId, guestsIds, step: 0, powerUps: powerUps.map((p) => p.$id) }
 	);
-
-	databases.updateDocument(
-		config.databaseId!,
-		config.databaseUser!,
-		session.$id,
-		{ multiStepPickerList: session.$id }
-	);
-
 	return session;
+}
+
+export async function updatePowerUp(
+	userId: string,
+	sessionId: string,
+	powerUpType: "fav" | "skull" | "reset"
+) {
+	const res = await databases.listDocuments(
+		config.databaseId!,
+		config.databasePowerUps!,
+		[Query.equal("user_id", userId)]
+	);
+	const powerUpDoc = res.documents[0];
+	if (powerUpType === "fav") {
+		const fav = powerUpDoc.fav;
+		return await databases.updateDocument(
+			config.databaseId!,
+			config.databasePowerUps!,
+			powerUpDoc.$id,
+			{ fav: fav - 1 }
+		);
+	} else if (powerUpType === "skull") {
+		const skull = powerUpDoc.skull;
+		return await databases.updateDocument(
+			config.databaseId!,
+			config.databasePowerUps!,
+			powerUpDoc.$id,
+			{ skull: skull - 1 }
+		);
+	} else if (powerUpType === "reset") {
+		return await databases.updateDocument(
+			config.databaseId!,
+			config.databasePowerUps!,
+			powerUpDoc.$id,
+			{ fav: 2, skull: 1 }
+		);
+	}
+}
+
+export async function updateStatus(
+	sessionId: string,
+	status: "invite" | "first_phase" | "second_phase" | "third_phase"
+) {
+	try {
+		const session = await databases.getDocument(
+			config.databaseId!,
+			config.databaseMultiStepPicker!,
+			sessionId
+		);
+		const me = await account.get();
+		const myActions = session.powerUps.find((p: any) => p.user_id === me.$id);
+		const otherUsersActions = session.powerUps.filter(
+			(p: any) => p.user_id !== me.$id
+		);
+		const updated = await databases.updateDocument(
+			config.databaseId!,
+			config.databasePowerUps!,
+			myActions.$id,
+			{ [status]: true }
+		);
+		if (otherUsersActions.every((p: any) => p[status] === true)) {
+			if (status === "first_phase") {
+				await afterTinderElimination(sessionId);
+			}
+			if (status === "second_phase") {
+				await afterGroupElimination(sessionId);
+			}
+			await databases.updateDocument(
+				config.databaseId!,
+				config.databaseMultiStepPicker!,
+				sessionId,
+				{ step: session.step + 1 }
+			);
+		}
+		return updated;
+	} catch (e) {
+		console.log("ERROR occurs in updateStatus: ", e);
+		return null;
+	}
+}
+
+export async function getPowerUpStatus(userId: string) {
+	const res = await databases.listDocuments(
+		config.databaseId!,
+		config.databasePowerUps!,
+		[Query.equal("user_id", userId)]
+	);
+	const powerDoc = res.documents[0]; // TU JEST BŁĄD - NIE MA SPRAWDZENIA O KTÓRĄ SESHE CHODZI
+	return {
+		fav: powerDoc.fav,
+		skull: powerDoc.skull,
+		invite: powerDoc.invite,
+		first_phase: powerDoc.first_phase,
+		second_phase: powerDoc.second_phase,
+		third_phase: powerDoc.third_phase,
+	};
+}
+
+export async function getSessionStep(sessionId: string) {
+	const session = await databases.getDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId
+	);
+	return session.step;
+}
+
+export async function setSessionStep(sessionId: string, step: number) {
+	try {
+		return await databases.updateDocument(
+			config.databaseId!,
+			config.databaseMultiStepPicker!,
+			sessionId,
+			{ step: step }
+		);
+	} catch (e) {
+		console.log("ERROR occurs in setSessionStep: ", e);
+		return null;
+	}
 }
 
 export async function getSessionsByUser() {
@@ -328,9 +425,16 @@ export async function getSessionsByUser() {
 	return databases.listDocuments(
 		config.databaseId!,
 		config.databaseMultiStepPicker!,
-		[Query.equal("ownerId", myId)]
+		[
+			Query.or([
+				Query.equal("ownerId", myId),
+				Query.contains("guestsIds", myId),
+			]),
+		]
 	);
 }
+
+export async function getFriendsSessionsStatus() {}
 
 export async function addItemToSession(tmdb_id: number) {
 	return databases.createDocument(
@@ -342,22 +446,229 @@ export async function addItemToSession(tmdb_id: number) {
 }
 
 export async function addItemsToSession(sessionId: string, tmdbIds: number[]) {
-	const created = await Promise.all(tmdbIds.map((id) => addItemToSession(id)));
-	const itemIds = created.map((doc) => doc.$id);
+	try {
+		let selectedIds = tmdbIds;
+		if (tmdbIds.length > 100) {
+			selectedIds = [];
+			const used = new Set<number>();
+			while (selectedIds.length < 100) {
+				const idx = Math.floor(Math.random() * tmdbIds.length);
+				if (!used.has(idx)) {
+					used.add(idx);
+					selectedIds.push(tmdbIds[idx]);
+				}
+			}
+		}
+		const created = await Promise.all(
+			selectedIds.map((id) => addItemToSession(id))
+		);
+		const itemIds = created.map((doc) => doc.$id);
 
-	return databases.updateDocument(
+		return await databases.updateDocument(
+			config.databaseId!,
+			config.databaseMultiStepPicker!,
+			sessionId,
+			{ multiStepPickerListItems: itemIds }
+		);
+	} catch (e) {
+		console.log("ERROR occurs in addItemsToSession: ", e);
+		return null;
+	}
+}
+
+export async function getSessionItems(sessionId: string) {
+	const list = await databases.getDocument(
 		config.databaseId!,
 		config.databaseMultiStepPicker!,
-		sessionId,
-		{ multiStepPickerListItems: itemIds }
+		sessionId
 	);
+	return list.multiStepPickerListItems;
+}
+
+export async function getNumberOfUsersInSession(sessionId: string) {
+	const session = await databases.getDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId
+	);
+	return session.guestsIds.length + 1;
+}
+
+export async function getFriendsForGame(sessionId: string) {
+	const session = await databases.getDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId
+	);
+	const friendsIds = session.guestsIds;
+	return databases.listDocuments(config.databaseId!, config.databaseUser!, [
+		Query.equal("$id", friendsIds),
+	]);
 }
 
 export async function setItemScore(itemId: string, newScore: number) {
+	const doc = await databases.getDocument(
+		config.databaseId!,
+		config.databaseMultiStepPickerItems!,
+		itemId
+	);
+
 	return databases.updateDocument(
 		config.databaseId!,
 		config.databaseMultiStepPickerItems!,
 		itemId,
-		{ score: newScore }
+		{ score: doc.score + newScore }
 	);
+}
+
+// ELIMINATING ITEMS
+
+export async function afterTinderElimination(sessionId: string) {
+	const items = await getSessionItems(sessionId);
+	const itemsWithScores = await Promise.all(
+		items.map(async (id: any) => {
+			return await databases.getDocument(
+				config.databaseId!,
+				config.databaseMultiStepPickerItems!,
+				id.$id
+			);
+		})
+	);
+	itemsWithScores.sort((a: any, b: any) => b.score - a.score);
+
+	let toKeep: any[] = [];
+	let toDelate: any[] = [];
+
+	if (items.length >= 12 && items.length <= 15) {
+		toKeep = itemsWithScores.slice(0, 8);
+		toDelate = itemsWithScores.slice(8);
+	} else if (items.length >= 16 && items.length <= 23) {
+		toKeep = itemsWithScores.slice(0, 12);
+		toDelate = itemsWithScores.slice(12);
+	} else if (items.length >= 24 && items.length <= 30) {
+		toKeep = itemsWithScores.slice(0, 16);
+		toDelate = itemsWithScores.slice(16);
+	} else if (items.length >= 31 && items.length <= 50) {
+		toKeep = itemsWithScores.slice(0, 20);
+		toDelate = itemsWithScores.slice(20);
+	} else if (items.length > 50) {
+		if (items.length === 100) {
+			toKeep = itemsWithScores.slice(0, 40);
+			toDelate = itemsWithScores.slice(40);
+		} else {
+			toKeep = itemsWithScores.slice(0, Math.floor(items.length / 10) * 4 + 4);
+			toDelate = itemsWithScores.slice(Math.floor(items.length / 10) * 4 + 4);
+		}
+	} else {
+		toKeep = itemsWithScores;
+		toDelate = [];
+	}
+
+	const updatedSession = await databases.updateDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId,
+		{ multiStepPickerListItems: toKeep.map((item: any) => item.$id) }
+	);
+
+	await Promise.all(
+		toDelate.map(async (item: any) => {
+			return await databases.deleteDocument(
+				config.databaseId!,
+				config.databaseMultiStepPickerItems!,
+				item.$id
+			);
+		})
+	);
+
+	return updatedSession;
+}
+
+export async function afterGroupElimination(sessionId: string) {
+	try {
+		const items = await getSessionItems(sessionId);
+		const itemsWithScores = await Promise.all(
+			items.map(async (id: any) => {
+				return await databases.getDocument(
+					config.databaseId!,
+					config.databaseMultiStepPickerItems!,
+					id.$id
+				);
+			})
+		);
+		itemsWithScores.sort((a: any, b: any) => b.score - a.score);
+
+		const toKeep = itemsWithScores.slice(0, 8);
+		const toDelate = itemsWithScores.slice(8);
+
+		await databases.updateDocument(
+			config.databaseId!,
+			config.databaseMultiStepPicker!,
+			sessionId,
+			{ multiStepPickerListItems: toKeep.map((item: any) => item.$id) }
+		);
+
+		if (toDelate.length >= 0) {
+			await Promise.all(
+				toDelate.map(async (item: any) => {
+					await databases.deleteDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						item.$id
+					);
+				})
+			);
+		}
+
+		const finalItems = await getSessionItems(sessionId);
+		for (let i = 0; i < finalItems.length; i++) {
+			if (i <= 7 && i > 5) {
+				await databases.updateDocument(
+					config.databaseId!,
+					config.databaseMultiStepPickerItems!,
+					finalItems[i].$id,
+					{ hearts: 1 }
+				);
+				continue;
+			} else if (i <= 5 && i > 2) {
+				await databases.updateDocument(
+					config.databaseId!,
+					config.databaseMultiStepPickerItems!,
+					finalItems[i].$id,
+					{ hearts: 2 }
+				);
+				continue;
+			} else if (i <= 2 && i >= 0) {
+				await databases.updateDocument(
+					config.databaseId!,
+					config.databaseMultiStepPickerItems!,
+					finalItems[i].$id,
+					{ hearts: 3 }
+				);
+			}
+		}
+		return true;
+	} catch (e) {
+		console.log("ERROR occurs in afterGroupElimination: ", e);
+		return null;
+	}
+}
+
+export async function attackItem(itemId: string) {
+	try {
+		const item = await databases.getDocument(
+			config.databaseId!,
+			config.databaseMultiStepPickerItems!,
+			itemId
+		);
+		await databases.updateDocument(
+			config.databaseId!,
+			config.databaseMultiStepPickerItems!,
+			itemId,
+			{ hearts: item.hearts - 1 }
+		);
+	} catch (e) {
+		console.log("ERROR occurs in attackItem: ", e);
+		return null;
+	}
 }

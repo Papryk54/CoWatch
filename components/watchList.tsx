@@ -1,6 +1,5 @@
 import { MovieGrid } from "@/components/movieGrid";
 import { getMyProfile, getWatchlistItems } from "@/lib/appwrite";
-import { useGlobalContext } from "@/lib/global-provider";
 import React, { useEffect, useState } from "react";
 import { Text } from "react-native";
 import { Movie } from "./movieTile";
@@ -8,7 +7,6 @@ import { Movie } from "./movieTile";
 export function WatchList(props: { orientation?: "vertical" | "horizontal" }) {
 	const [loading, setLoading] = useState(true);
 	const [movies, setMovies] = useState<Movie[]>([]);
-	const { refetch } = useGlobalContext();
 
 	const TMDB = {
 		base: "https://api.themoviedb.org/3",
@@ -28,7 +26,7 @@ export function WatchList(props: { orientation?: "vertical" | "horizontal" }) {
 
 	const getProfile = async () => {
 		const me = await getMyProfile();
-		const myWatchlistId = me.watchList[0].$id;
+		const myWatchlistId = me.watchlist_main.$id;
 		const myWatchlistItems = await getWatchlistItems(myWatchlistId);
 		const items = myWatchlistItems.documents.map((item: any) => item.tmdb_id);
 		await getMoviesByIds(items);

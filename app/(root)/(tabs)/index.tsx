@@ -3,9 +3,9 @@ import Friends from "@/components/friends";
 import { PopularMoviesGrid } from "@/components/popularMoviesGrid";
 import { WatchList } from "@/components/watchList";
 import { useGlobalContext } from "@/lib/global-provider";
-import { Redirect, router } from "expo-router";
+import { Redirect } from "expo-router";
 import React from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ScrollView, Text, TextInput, View } from "react-native";
 
 const Index = () => {
 	const { isLogged, loading } = useGlobalContext();

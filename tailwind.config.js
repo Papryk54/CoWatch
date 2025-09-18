@@ -14,6 +14,7 @@ module.exports = {
 				alerts: {
 					success: "#1BB28B",
 					error: "#DA4D6E",
+					warning: "#E6B84D",
 				},
 				text: { DEFAULT: "#DDDDDD", dark: "#222222" },
 			},

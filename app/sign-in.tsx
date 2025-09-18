@@ -1,4 +1,4 @@
-import { ensureMyProfile, login } from "@/lib/appwrite";
+import { login } from "@/lib/appwrite";
 import { useGlobalContext } from "@/lib/global-provider";
 import { router } from "expo-router";
 import React from "react";

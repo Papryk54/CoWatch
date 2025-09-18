@@ -17,9 +17,7 @@ const Friends: React.FC = () => {
 	const [info, setInfo] = useState<string | null>(null);
 
 	const handleSearch = async () => {
-		console.log("Szukam:", accountId);
 		const q = accountId.trim();
-		console.log("Trimmed:", q);
 		setError(null);
 		setInfo(null);
 		setFriend(null);
@@ -32,7 +30,6 @@ const Friends: React.FC = () => {
 			const doc = await findProfileById(q);
 			if (doc) {
 				setFriend(doc);
-				console.log("Znaleziono użytkownika:", doc);
 			} else setError("Nie znaleziono użytkownika.");
 		} catch (e) {
 			setError("Błąd podczas wyszukiwania.");

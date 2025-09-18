@@ -1,4 +1,4 @@
-import { addToWatchlist, ensureMyProfile } from "@/lib/appwrite";
+import { addToWatchlist, getMyProfile } from "@/lib/appwrite";
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 
@@ -7,16 +7,13 @@ const MovieActionButtons = ({ movieId }: { movieId: number }) => {
 
 	useEffect(() => {
 		(async () => {
-			const p = await ensureMyProfile();
+			const p = await getMyProfile();
 			setProfile(p);
 		})();
 	}, []);
 
 	const handleAddToWatchlist = () => {
-		console.log("Dodawanie do listy obserwowanych");
-		console.log("Movie ID:", movieId);
-		console.log("Profile:", profile.watchList[0].$id);
-		addToWatchlist(profile.watchList[0].$id, movieId);
+		addToWatchlist(profile.watchlist_main.$id, movieId);
 	};
 
 	return (
@@ -36,7 +33,7 @@ const MovieActionButtons = ({ movieId }: { movieId: number }) => {
 
 			<Pressable
 				className="flex-1 flex-row items-center justify-center px-5 active:opacity-80"
-				onPress={() => console.log("ocena filmu")}
+				onPress={() => console.log("Reviewed!")}
 			>
 				<Image
 					source={require("@/assets/icons/rating.png")}
