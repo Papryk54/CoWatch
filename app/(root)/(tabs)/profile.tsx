@@ -1,6 +1,9 @@
+import Friends from "@/components/friends";
 import PullToRefreshWrapper from "@/components/pullToRefreshWrapper";
 import WaitingForOthersButton from "@/components/waitingForOthersButton";
 import {
+	client,
+	config,
 	getMyProfile,
 	getPowerUpStatus,
 	getSessionsByUser,
@@ -8,7 +11,7 @@ import {
 } from "@/lib/appwrite";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 
 const UserRow = ({ user, sessionId, sessionStep, thisUser, handleInvite }) => (
 	<View>
@@ -72,7 +75,7 @@ const UserRow = ({ user, sessionId, sessionStep, thisUser, handleInvite }) => (
 );
 
 const Profile = () => {
-	const [username, setUsername] = useState("");
+	const [currentName, setCurrentName] = useState("");
 	const [sessions, setSessions] = useState<any[]>([]);
 	const [thisUser, setThisUser] = useState<any | null>(null);
 	const [isAllInvited, setIsAllInvited] = useState(false);
@@ -83,6 +86,7 @@ const Profile = () => {
 	const load = async () => {
 		try {
 			const me = await getMyProfile();
+			setCurrentName(me.name || "");
 			const sessionsRes = await getSessionsByUser();
 			const newSessions: any[] = [];
 			for (let i = 0; i < sessionsRes?.documents.length; i++) {
@@ -114,13 +118,13 @@ const Profile = () => {
 				}
 				newSessions.push({
 					id: sessionDoc.$id,
-					step,
+					step: step,
 					ownerId: sessionDoc.ownerId,
 					guestsIds: sessionDoc.guestsIds,
 					users,
 				});
 			}
-			setSessions(newSessions);
+			await setSessions(newSessions);
 			const meFinal = newSessions
 				.flatMap((s) => s.users)
 				.find((u: any) => u.isMe);
@@ -156,7 +160,6 @@ const Profile = () => {
 		router.push(`/(root)/(flow)/multiStepPicker/${sessionId}`);
 	};
 
-
 	const handleInvite = (sessionId: string, answer: boolean) => {
 		if (answer) {
 			updateStatus(sessionId, "invite");
@@ -166,29 +169,35 @@ const Profile = () => {
 	};
 
 	useEffect(() => {
+		const channel = `databases.${config.databaseId}.collections.${config.databasePowerUps}.documents`;
+
+		const unsubscribe = client.subscribe(channel, async (response) => {
+			const eventType = response.events[0];
+			console.log("Received event: ", eventType);
+			if (eventType.includes("update")) {
+				load();
+			}
+		});
+		return () => {
+			unsubscribe();
+		};
+	}, []);
+
+	useEffect(() => {
 		load();
 	}, []);
 
 	return (
 		<View className="w-full flex-1 bg-brand-bgc">
+			<Pressable className="absolute top-6 right-6">
+				<Text className="text-text font-rubik-medium text-2xl">⚙️</Text>
+			</Pressable>
 			<PullToRefreshWrapper onRefresh={load}>
-				<View className="flex-1 bg-brand-bgc p-6">
-					{/* Sekcja ustawień profilu */}
-					<View className="mb-2">
-						<Text className="text-text text-2xl font-bold mb-6 text-center">
-							Ustaw profil
-						</Text>
-						<Text className="text-text text-base mb-2">Nazwa użytkownika</Text>
-						<TextInput
-							value={username}
-							onChangeText={setUsername}
-							placeholder="Wpisz swoją nazwę"
-							placeholderTextColor="#999"
-							className="bg-white/10 text-text px-4 py-3 rounded-xl"
-						/>
-					</View>
+				<Text className="text-text text-2xl font-bold my-6 text-center">
+					{currentName}
+				</Text>
 
-					{/* Sekcja rozpoczynania sesji */}
+				<View className="flex-1 bg-brand-bgc p-6">
 					<View className="mb-8">
 						<Pressable
 							className={`w-44 items-center justify-center h-12 mt-4 rounded-xl bg-brand`}
@@ -306,6 +315,7 @@ const Profile = () => {
 							/>
 						)}
 					</View>
+					<Friends></Friends>
 				</View>
 			</PullToRefreshWrapper>
 		</View>

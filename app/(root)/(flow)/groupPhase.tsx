@@ -34,7 +34,7 @@ const TMDB = {
 		size: "w300" | "w500" | "w780" | "original" = "w500"
 	) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
 	headers: {
-		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_KEY}`,
+		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
 		"Content-Type": "application/json;charset=utf-8",
 	} as HeadersInit,
 };
@@ -133,10 +133,7 @@ const GroupPhase = ({ sessionId, onDone }: Props) => {
 		setGroupIndex(0);
 	}, []);
 
-	const prepareGroups = (
-		movies: TmdbMovie[],
-		g4: number,
-	) => {
+	const prepareGroups = (movies: TmdbMovie[], g4: number) => {
 		let arr = [...movies];
 		const groups: TmdbMovie[][] = [];
 
@@ -215,15 +212,17 @@ const GroupPhase = ({ sessionId, onDone }: Props) => {
 	};
 
 	const handleEnd = async () => {
+		setLoading(true);
 		await Promise.all(
 			scoresToAdd.map((item) => setItemScore(item.id, item.scoreToAdd))
 		);
 		await updateStatus(sessionId, "second_phase");
 		onDone();
+		setLoading(false);
 	};
 
 	return (
-		<View className="flex-1 items-center justify-center align-middle -mx-6 -my-6">
+		<View className="flex-1 items-center justify-center align-middle -mx-4 -my-4">
 			{!loading && !err && groupIndex <= groups.length - 1 && (
 				<ProgressBar index={groupIndex} movies={groups} />
 			)}
@@ -231,10 +230,9 @@ const GroupPhase = ({ sessionId, onDone }: Props) => {
 				<ProgressBar index={groupIndex} movies={groups} done={true} />
 			)}
 			{groupIndex > groups.length - 1 && (
-				<View className="w-full px-4 justify-center items-center align-middle">
+				<View className="w-full px-2 justify-center items-center align-middle">
 					<Text className="font-rubik-extrabold text-text text-center text-base">
-						To już wszystkie filmy. Zapisz swoje wybory i przejdź do następnej
-						fazy
+						Zapisz swoje wybory i przejdź do następnej fazy
 					</Text>
 				</View>
 			)}
@@ -252,7 +250,7 @@ const GroupPhase = ({ sessionId, onDone }: Props) => {
 				movies.length > 0 &&
 				groupIndex <= groups.length - 1 && (
 					<View className="justify-center flex-1">
-						<View className="flex-row flex-wrap justify-between w-[80%] align-middle items-center ">
+						<View className="flex-row flex-wrap justify-between w-full p-6 align-middle items-center ">
 							{current.map((m) => (
 								<Pressable
 									key={m.id}
@@ -289,7 +287,7 @@ const GroupPhase = ({ sessionId, onDone }: Props) => {
 					</View>
 				)}
 			{groupIndex <= groups.length - 1 && (
-				<View className="flex-row items-center justify-between absolute bottom-0 mb-8 w-[80%]">
+				<View className="flex-row items-center justify-between absolute bottom-0 mb-8 w-full p-6">
 					<Pressable
 						onPress={handleReset}
 						className="bg-alerts-error rounded-2xl w-14 h-14 items-center justify-center mr-3"

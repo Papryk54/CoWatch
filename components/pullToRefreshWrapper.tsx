@@ -1,15 +1,12 @@
 import React, { useState } from "react";
-import { FlatList, RefreshControl, ViewStyle } from "react-native";
+import { FlatList, RefreshControl } from "react-native";
 
 type Props = {
 	onRefresh: () => Promise<void> | void;
 	children: React.ReactNode;
 };
 
-const PullToRefreshWrapper: React.FC<Props> = ({
-	onRefresh,
-	children,
-}) => {
+const PullToRefreshWrapper: React.FC<Props> = ({ onRefresh, children }) => {
 	const [refreshing, setRefreshing] = useState(false);
 
 	const handleRefresh = async () => {
@@ -23,6 +20,7 @@ const PullToRefreshWrapper: React.FC<Props> = ({
 			data={[null]}
 			keyExtractor={() => "pull-to-refresh-wrapper"}
 			renderItem={() => <>{children}</>}
+			className="flex-1 bg-brand-bgc"
 			refreshControl={
 				<RefreshControl
 					refreshing={refreshing}

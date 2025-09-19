@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 const Friends: React.FC = () => {
-	const [accountId, setAccountId] = useState("");
+	const [searchId, setSearchId] = useState("");
 	const [friend, setFriend] = useState<any | null>(null);
 	const [searching, setSearching] = useState(false);
 	const [adding, setAdding] = useState(false);
@@ -17,7 +17,7 @@ const Friends: React.FC = () => {
 	const [info, setInfo] = useState<string | null>(null);
 
 	const handleSearch = async () => {
-		const q = accountId.trim();
+		const q = searchId.trim();
 		setError(null);
 		setInfo(null);
 		setFriend(null);
@@ -39,12 +39,12 @@ const Friends: React.FC = () => {
 	};
 
 	const handleAdd = async () => {
-		if (!accountId.trim() || !friend) return;
+		if (!searchId.trim() || !friend) return;
 		setAdding(true);
 		setError(null);
 		setInfo(null);
 		try {
-			await addUserToFriends(accountId.trim());
+			await addUserToFriends(searchId.trim());
 			setInfo("Dodano do znajomych ✅");
 		} catch (e) {
 			setError("Nie udało się dodać.");
@@ -67,8 +67,8 @@ const Friends: React.FC = () => {
 
 			<View className="flex-row items-center gap-2">
 				<TextInput
-					value={accountId}
-					onChangeText={setAccountId}
+					value={searchId}
+					onChangeText={setSearchId}
 					onSubmitEditing={handleSearch}
 					placeholder="Wpisz accountId…"
 					placeholderTextColor="#DDDDDD88"
@@ -94,8 +94,8 @@ const Friends: React.FC = () => {
 			{friend && (
 				<View className="flex-row items-center justify-between bg-brand-dark rounded-xl px-4 py-3 mt-2">
 					<View>
-						<Text className="text-text font-rubik-medium">{friendLabel}</Text>
-						<Text className="text-text/60 text-xs">id: {friend.$id}</Text>
+						<Text className="text-text font-rubik-medium">{friend.name}</Text>
+						<Text className="text-text/60 text-xs">{friend.searchId}</Text>
 					</View>
 					<Pressable
 						onPress={handleAdd}

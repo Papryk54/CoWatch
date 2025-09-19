@@ -26,6 +26,7 @@ export const config = {
 	databaseMultiStepPickerItems:
 		process.env.EXPO_PUBLIC_APPWRITE_DATABASE_MULTI_STEP_PICKER_ITEMS,
 	databasePowerUps: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_POWER_UPS,
+	tmdbApiKey: process.env.EXPO_PUBLIC_TMDB_API_KEY,
 };
 
 export const client = new Client();
@@ -116,6 +117,24 @@ export async function createNewUser(userId: string) {
 	} catch (error) {
 		console.log(error);
 		return null;
+	}
+}
+
+export async function updateUserName(newName: string) {
+	try {
+		const me = await account.get();
+		const userCode = me.$id.slice(-4).toUpperCase();
+		await databases.updateDocument(
+			config.databaseId!,
+			config.databaseUser!,
+			me.$id,
+			{
+				name: newName,
+				searchId: newName + "#" + userCode,
+			}
+		);
+	} catch (e) {
+		console.log(e);
 	}
 }
 
@@ -221,12 +240,12 @@ export async function addToWatchlist(watchList_id: string, tmdb_id: number) {
 
 // FRIENDS
 
-export async function findProfileById(profileId: string) {
+export async function findProfileById(searchId: string) {
 	try {
 		const res = await databases.listDocuments(
 			config.databaseId!,
 			config.databaseUser!,
-			[Query.equal("$id", profileId), Query.limit(1)]
+			[Query.equal("searchId", searchId), Query.limit(1)]
 		);
 		return res.documents[0];
 	} catch {}
@@ -268,7 +287,7 @@ export async function getMyFriends() {
 		const friends = await databases.listDocuments(
 			config.databaseId!,
 			config.databaseUser!,
-			[Query.equal("$id", friendsIds)]
+			[Query.equal("searchId", friendsIds)]
 		);
 		return friends;
 	} catch (e) {
@@ -279,24 +298,44 @@ export async function getMyFriends() {
 // MULTI STEP PICKER
 
 export async function createSession(ownerId: string, guestsIds: string[]) {
-	const allUsers = [ownerId, ...guestsIds];
-	const powerUps = await Promise.all(
-		allUsers.map((user_id) =>
-			databases.createDocument(
-				config.databaseId!,
-				config.databasePowerUps!,
-				"unique()",
-				{ user_id }
-			)
-		)
-	);
-	const session = await databases.createDocument(
-		config.databaseId!,
-		config.databaseMultiStepPicker!,
-		"unique()",
-		{ ownerId, guestsIds, step: 0, powerUps: powerUps.map((p) => p.$id) }
-	);
-	return session;
+	try {
+		const allUsers = [ownerId, ...guestsIds];
+		const powerUps = await Promise.all(
+			allUsers.map((user_id) => {
+				if (user_id !== ownerId) {
+					return databases.createDocument(
+						config.databaseId!,
+						config.databasePowerUps!,
+						"unique()",
+						{ user_id }
+					);
+				} else {
+					return databases.createDocument(
+						config.databaseId!,
+						config.databasePowerUps!,
+						"unique()",
+						{ user_id, invite: true }
+					);
+				}
+			})
+		);
+		const session = await databases.createDocument(
+			config.databaseId!,
+			config.databaseMultiStepPicker!,
+			"unique()",
+			{
+				ownerId,
+				guestsIds,
+				step: 0,
+				powerUps: powerUps.map((p) => p.$id),
+				allUsersInSession: [ownerId, ...guestsIds],
+				currentUserId: ownerId,
+			}
+		);
+		return session;
+	} catch (e) {
+		console.log(e);
+	}
 }
 
 export async function updatePowerUp(
@@ -402,20 +441,6 @@ export async function getSessionStep(sessionId: string) {
 		sessionId
 	);
 	return session.step;
-}
-
-export async function setSessionStep(sessionId: string, step: number) {
-	try {
-		return await databases.updateDocument(
-			config.databaseId!,
-			config.databaseMultiStepPicker!,
-			sessionId,
-			{ step: step }
-		);
-	} catch (e) {
-		console.log("ERROR occurs in setSessionStep: ", e);
-		return null;
-	}
 }
 
 export async function getSessionsByUser() {
@@ -597,9 +622,15 @@ export async function afterGroupElimination(sessionId: string) {
 			})
 		);
 		itemsWithScores.sort((a: any, b: any) => b.score - a.score);
-
-		const toKeep = itemsWithScores.slice(0, 8);
-		const toDelate = itemsWithScores.slice(8);
+		let toKeep;
+		let toDelate;
+		if (itemsWithScores.length < 12) {
+			toKeep = itemsWithScores.slice(0, 6);
+			toDelate = itemsWithScores.slice(6);
+		} else {
+			toKeep = itemsWithScores.slice(0, 10);
+			toDelate = itemsWithScores.slice(10);
+		}
 
 		await databases.updateDocument(
 			config.databaseId!,
@@ -621,30 +652,65 @@ export async function afterGroupElimination(sessionId: string) {
 		}
 
 		const finalItems = await getSessionItems(sessionId);
+		finalItems.sort((a: any, b: any) => b.score - a.score);
 		for (let i = 0; i < finalItems.length; i++) {
-			if (i <= 7 && i > 5) {
-				await databases.updateDocument(
-					config.databaseId!,
-					config.databaseMultiStepPickerItems!,
-					finalItems[i].$id,
-					{ hearts: 1 }
-				);
-				continue;
-			} else if (i <= 5 && i > 2) {
-				await databases.updateDocument(
-					config.databaseId!,
-					config.databaseMultiStepPickerItems!,
-					finalItems[i].$id,
-					{ hearts: 2 }
-				);
-				continue;
-			} else if (i <= 2 && i >= 0) {
-				await databases.updateDocument(
-					config.databaseId!,
-					config.databaseMultiStepPickerItems!,
-					finalItems[i].$id,
-					{ hearts: 3 }
-				);
+			if (finalItems.length === 6) {
+				if (i <= 5 && i > 3) {
+					// 4,5
+					await databases.updateDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						finalItems[i].$id,
+						{ hearts: 1 }
+					);
+					continue;
+				} else if (i <= 3 && i > 1) {
+					// 2,3
+					await databases.updateDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						finalItems[i].$id,
+						{ hearts: 2 }
+					);
+					continue;
+				} else if (i <= 1 && i >= 0) {
+					// 0,1
+					await databases.updateDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						finalItems[i].$id,
+						{ hearts: 3 }
+					);
+				}
+			}
+			if (finalItems.length === 10) {
+				if (i <= 9 && i > 6) {
+					// 7,8,9
+					await databases.updateDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						finalItems[i].$id,
+						{ hearts: 1 }
+					);
+					continue;
+				} else if (i <= 5 && i > 3) {
+					// 4,5,6
+					await databases.updateDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						finalItems[i].$id,
+						{ hearts: 2 }
+					);
+					continue;
+				} else if (i <= 3 && i >= 0) {
+					// 0,1,2,3
+					await databases.updateDocument(
+						config.databaseId!,
+						config.databaseMultiStepPickerItems!,
+						finalItems[i].$id,
+						{ hearts: 3 }
+					);
+				}
 			}
 		}
 		return true;
@@ -654,7 +720,7 @@ export async function afterGroupElimination(sessionId: string) {
 	}
 }
 
-export async function attackItem(itemId: string) {
+export async function attackItem(itemId: string, sessionId: string) {
 	try {
 		const item = await databases.getDocument(
 			config.databaseId!,
@@ -667,8 +733,68 @@ export async function attackItem(itemId: string) {
 			itemId,
 			{ hearts: item.hearts - 1 }
 		);
+		await nextUserTurn(sessionId);
 	} catch (e) {
 		console.log("ERROR occurs in attackItem: ", e);
 		return null;
 	}
+}
+
+export async function getCurrentUserForElimination(sessionId: string) {
+	try {
+		const session = await databases.getDocument(
+			config.databaseId!,
+			config.databaseMultiStepPicker!,
+			sessionId
+		);
+		const currentUserId = session.currentUserId;
+		const currentUser = await databases.getDocument(
+			config.databaseId!,
+			config.databaseUser!,
+			currentUserId
+		);
+		return currentUser.name;
+	} catch (e) {
+		console.log("ERROR occurs in getCurrentUserForElimination: ", e);
+		return null;
+	}
+}
+
+export async function getSessionUsers(sessionId: string) {
+	const session = await databases.getDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId
+	);
+
+	const userIds = [session.allUsersInSession];
+	return userIds;
+}
+
+export async function nextUserTurn(sessionId: string) {
+	const session = await databases.getDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId
+	);
+	const allUsers = session.allUsersInSession;
+	const currentUser = session.currentUserId;
+	const currentIndex = allUsers.indexOf(currentUser);
+	const nextIndex = (currentIndex + 1) % allUsers.length;
+	const nextUserId = allUsers[nextIndex];
+
+	return await databases.updateDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId,
+		{ currentUserId: nextUserId }
+	);
+}
+
+export async function deleteSession(sessionId: string) {
+	return await databases.deleteDocument(
+		config.databaseId!,
+		config.databaseMultiStepPicker!,
+		sessionId
+	);
 }

@@ -1,5 +1,5 @@
 const API_URL = "https://api.themoviedb.org/3";
-const KEY = process.env.EXPO_PUBLIC_TMDB_API_KEY;
+const KEY = process.env.EXPO_PUBLIC_TMDB_API_CODE;
 
 const options = {
 	method: "GET",

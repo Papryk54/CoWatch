@@ -4,7 +4,6 @@ import {
 	getMyProfile,
 	getMyWatchlists,
 	getWatchlistItems,
-	setSessionStep,
 } from "@/lib/appwrite";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -29,7 +28,7 @@ export default function SessionConfig() {
 			size: "w300" | "w500" | "w780" | "original" = "w500"
 		) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
 		headers: {
-			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_KEY}`,
+			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
 			"Content-Type": "application/json;charset=utf-8",
 		} as HeadersInit,
 	};
@@ -82,8 +81,7 @@ export default function SessionConfig() {
 		});
 	};
 
-	const goToSession = async (sessionId: string, step: number) => {
-		await setSessionStep(sessionId, step);
+	const goToSession = async (sessionId: string) => {
 		router.push({
 			pathname: "/(root)/(flow)/multiStepPicker/[sessionId]",
 			params: { sessionId },
@@ -93,7 +91,7 @@ export default function SessionConfig() {
 	const handleEndConfig = async () => {
 		if (!me || selectedFriends.length === 0) return;
 		const session = await createSession(me.$id, selectedFriends);
-		goToSession(session.$id, 1);
+		goToSession(session!.$id);
 	};
 
 	return (

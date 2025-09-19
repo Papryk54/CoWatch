@@ -1,12 +1,13 @@
 import MovieActionButtons from "@/components/movieActionButtons";
 import { Movie } from "@/components/movieTile";
 import { LinearGradient } from "expo-linear-gradient";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
 	Image,
+	ImageBackground,
 	Pressable,
 	Text,
 	View,
@@ -43,7 +44,7 @@ const TMDB = {
 		size: "w300" | "w500" | "w780" | "original" = "w500"
 	) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
 	headers: {
-		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_KEY}`,
+		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
 		"Content-Type": "application/json;charset=utf-8",
 	} as HeadersInit,
 };
@@ -95,7 +96,7 @@ export default function MovieDetailsScreen() {
 					id: m.id,
 					title: m.title,
 					vote_average: m.vote_average ?? 0,
-					poster_path: m.poster_path ?? null,
+					poster_path: m.poster_path,
 				}));
 				setSimilar(mappedSimilar);
 			} catch (e: any) {
@@ -166,7 +167,8 @@ export default function MovieDetailsScreen() {
 					renderItem={null}
 					ListHeaderComponent={() => (
 						<View>
-							<View className="w-screen -my-6">
+							<View className="w-screen -my-6 relative">
+								<View className="absolute inset-0 bg-brand-bgc" />
 								<Image
 									source={
 										movie.poster_path
@@ -178,22 +180,25 @@ export default function MovieDetailsScreen() {
 										setMovie({ ...movie, poster_path: null });
 									}}
 									resizeMode="cover"
-									className="w-full aspect-[2/3] opacity-60"
+									className="w-full aspect-[2/3] mt-28"
+								/>
+								<Image
+									source={require("@/assets/gradient.png")}
+									resizeMode="cover"
+									className="mt-28 absolute"
 								/>
 								<LinearGradient
 									colors={[
 										"rgba(10,15,28,1)",
-										"rgba(10,15,28,0.9)",
-										"rgba(10,15,28,0.1)",
-										"rgba(10,15,28,0.9)",
+										"rgba(10,15,28,0.2)",
 										"rgba(10,15,28,1)",
 									]}
-									className="absolute bottom-0 left-0 right-0 h-full"
+									className="absolute inset-0"
 								/>
 							</View>
 
-							<View className="absolute flex top-12 -left-4 w-screen px-4">
-								<Text className="text-text text-3xl font-bold text-center mt-6">
+							<View className="absolute flex top-9 -left-4 w-screen px-4">
+								<Text className="text-text text-3xl font-bold text-center">
 									{movie.title}
 								</Text>
 
@@ -209,7 +214,6 @@ export default function MovieDetailsScreen() {
 										{movie.overview || "Brak opisu."}
 									</Text>
 								</View>
-
 
 								<View className="items-center mt-4 mb-6">
 									<View className="flex-row items-center rounded-full bg-white/10 border border-white/10 px-3 py-1.5">
@@ -264,7 +268,7 @@ export default function MovieDetailsScreen() {
 									<Text className="text-text text-xl font-rubik-semibold mb-2">
 										Filmy z podobnymi tagami:
 									</Text>
-									<View className="h-60 mb-6">
+									<View className="h-60 mb-12">
 										<FlatList
 											data={similar}
 											horizontal
@@ -272,20 +276,29 @@ export default function MovieDetailsScreen() {
 											showsHorizontalScrollIndicator={false}
 											renderItem={({ item }) => (
 												<View className="w-44 h-full mr-4 relative rounded-md bg-slate-200">
-													<Image
-														source={
-															item.poster_path
-																? { uri: TMDB.img(item.poster_path)! }
-																: FALLBACK_POSTER
-														}
-														defaultSource={FALLBACK_POSTER}
-														resizeMode="cover"
-														className="w-full h-full"
-													/>
-													<LinearGradient
-														colors={["transparent", "rgba(0,0,0,0.8)"]}
-														className="absolute inset-0"
-													/>
+													<Link href={`/(root)/properties/${item.id}`}>
+														<ImageBackground
+															source={{ uri: TMDB.img(item.poster_path)! }}
+															className="w-full h-full"
+															resizeMode="cover"
+														>
+															<View className="flex-row items-center gap-1 px-2 py-1 rounded-full bg-black/60 absolute top-2 right-2">
+																<Text className="font-rubik-semibold text-text text-xs leading-none ">
+																	{ratingText}
+																</Text>
+																<Image
+																	source={require("@/assets/icons/rating.png")}
+																	className="w-5 h-5"
+																	resizeMode="contain"
+																/>
+															</View>
+															<LinearGradient
+																colors={["transparent", "rgba(0,0,0,0.8)"]}
+																className="absolute inset-0"
+															/>
+														</ImageBackground>
+													</Link>
+
 													<Text
 														className="text-text font-rubik-semibold text-md ml-1 w-full absolute bottom-0 "
 														numberOfLines={2}

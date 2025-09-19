@@ -1,4 +1,14 @@
-import { attackItem, client, config, getSessionItems } from "@/lib/appwrite";
+import LoadingScreen from "@/components/loadingScreen";
+import { WinnerModal } from "@/components/winnerModal";
+import {
+	attackItem,
+	client,
+	config,
+	deleteSession,
+	getCurrentUserForElimination,
+	getMyProfile,
+	getSessionItems,
+} from "@/lib/appwrite";
 import React, { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 
@@ -11,7 +21,7 @@ type MovieItem = {
 	id: string;
 	tmdb_id: number;
 	score: number;
-	heartPoints: 1 | 2 | 3;
+	heartPoints: 0 | 1 | 2 | 3;
 	poster_path: string | null;
 	title: string;
 	overview: string;
@@ -19,15 +29,18 @@ type MovieItem = {
 	vote_average?: number;
 };
 
-type SelectedMovie = MovieItem | null;
+type SelectedMovie = MovieItem;
 
 const EliminationPhase = ({ sessionId, onDone }: Props) => {
 	const [itemsForElimination, setItemsForElimination] = useState<MovieItem[]>(
 		[]
 	);
-	const [selected, setSelected] = useState<SelectedMovie>(null);
+	const [selected, setSelected] = useState<SelectedMovie | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [err, setErr] = useState<string | null>(null);
+	const [showWinnerModal, setShowWinnerModal] = useState(false);
+	const [currentUser, setCurrentUser] = useState<any | null>(null);
+	const [isMyTurn, setIsMyTurn] = useState(false);
 
 	const TMDB = {
 		base: "https://api.themoviedb.org/3",
@@ -36,7 +49,7 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 			size: "w300" | "w500" | "w780" | "original" = "w500"
 		) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
 		headers: {
-			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_KEY}`,
+			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
 			"Content-Type": "application/json;charset=utf-8",
 		} as HeadersInit,
 	};
@@ -62,6 +75,10 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 	const load = async () => {
 		try {
 			setLoading(true);
+			const currentUserName = await getCurrentUserForElimination(sessionId);
+			setCurrentUser(currentUserName);
+			const me = await getMyProfile();
+			setIsMyTurn(currentUserName === me.name);
 			const items = await getSessionItems(sessionId);
 			const merged: MovieItem[] = await Promise.all(
 				items.map(async (item: any) => {
@@ -79,12 +96,10 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 					};
 				})
 			);
+			merged.sort((a, b) => b.score - a.score);
 			setItemsForElimination(merged);
-			if (merged.length > 0) {
-				setSelected(merged[0]);
-			} else {
-				setSelected(null);
-			}
+			const firstWithHearts = merged.find((i) => i.heartPoints > 0);
+			setSelected(firstWithHearts ?? null);
 		} catch (e: any) {
 			setErr(e?.message ?? "Nie udało się pobrać filmów.");
 		} finally {
@@ -96,6 +111,34 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 		load();
 	}, []);
 
+	const handleSelect = async (item: MovieItem) => {
+		if (item.heartPoints <= 0) return;
+		setSelected(item);
+	};
+
+	useEffect(() => {
+		if (!itemsForElimination || itemsForElimination.length === 0) {
+			setSelected(null);
+			return;
+		}
+		const itemsLeft = itemsForElimination.filter((i) => i.heartPoints > 0);
+		if (itemsLeft.length === 1) {
+			handleEndGame(itemsLeft[0]);
+			return;
+		}
+		if (selected) {
+			const stillExists = itemsLeft.find(
+				(i) => i.id === selected.id && i.heartPoints > 0
+			);
+			if (stillExists) {
+				setSelected(stillExists);
+				return;
+			}
+		}
+		const firstWithHearts = itemsForElimination.find((i) => i.heartPoints > 0);
+		setSelected(firstWithHearts ?? null);
+	}, [itemsForElimination]);
+
 	useEffect(() => {
 		const channel = `databases.${config.databaseId}.collections.${config.databaseMultiStepPickerItems}.documents`;
 
@@ -103,25 +146,14 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 			const eventType = response.events[0];
 			const changedItem = response.payload as any;
 			if (eventType.includes("update")) {
-				const tmdb = await fetchTmdbMovie(changedItem.tmdb_id);
-				setItemsForElimination((prev) =>
-					prev.map((item) =>
+				setItemsForElimination((prev) => {
+					const updatedItems = prev.map((item) =>
 						item.id === changedItem.$id
-							? {
-									...item,
-									id: changedItem.$id,
-									tmdb_id: changedItem.tmdb_id,
-									score: changedItem.score,
-									heartPoints: changedItem.hearts,
-									poster_path: tmdb.poster_path ?? null,
-									title: tmdb.title ?? "Brak danych",
-									overview: tmdb.overview ?? "",
-									genres: tmdb.genres,
-									vote_average: tmdb.vote_average,
-								}
+							? { ...item, heartPoints: changedItem.hearts }
 							: item
-					)
-				);
+					);
+					return updatedItems;
+				});
 			}
 		});
 
@@ -130,13 +162,54 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 		};
 	}, []);
 
-	const handleDealDamage = (id: string | undefined) => async () => {
+	useEffect(() => {
+		const channel = `databases.${config.databaseId}.collections.${config.databaseMultiStepPicker}.documents`;
+
+		const unsubscribe = client.subscribe(channel, async (response) => {
+			const eventType = response.events[0];
+			if (eventType.includes("update")) {
+				const currentUserId = await getCurrentUserForElimination(sessionId);
+				setCurrentUser(currentUserId);
+				const me = await getMyProfile();
+				setIsMyTurn(currentUserId === me.name);
+			}
+		});
+		return () => {
+			unsubscribe();
+		};
+	}, []);
+
+	const handleDealDamage = (id: string) => async () => {
 		if (!id) return;
-		await attackItem(id);
+		setIsMyTurn(false);
+		await attackItem(id, sessionId);
+	};
+
+	const handleEndGame = async (winner: MovieItem) => {
+		setSelected(winner);
+		setShowWinnerModal(true);
+		await deleteSession(sessionId);
+		return;
 	};
 
 	return (
-		<View className="w-full h-[100%] justify-between">
+		<View className="w-full h-[100%] justify-between p-0">
+			{loading && <LoadingScreen />}
+			{showWinnerModal && selected && (
+				<WinnerModal
+					tmdb_id={selected.tmdb_id}
+					isOpen={showWinnerModal}
+					onClose={() => onDone()}
+				/>
+			)}
+			{!selected ||
+				(selected.heartPoints <= 0 && (
+					<View className="flex-1 justify-center items-center">
+						<Text className="text-text font-rubik-extrabold text-lg text-center px-4">
+							Brak dostępnych filmów do ataku. Poczekaj na swoją kolej.
+						</Text>
+					</View>
+				))}
 			<View className="w-full h-[60%] flex-col items-center justify-between align-middle">
 				<View className="flex-row w-full rounded-full h-[60%] justify-center items-center">
 					<Image
@@ -219,41 +292,23 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 					renderItem={({ item }) => {
 						return (
 							<Pressable
-								onPress={() => setSelected(item)}
+								onPress={() => handleSelect(item)}
+								disabled={item.heartPoints <= 0}
 								className={`items-center mx-2 ${selected?.tmdb_id === item.tmdb_id ? "opacity-100" : "opacity-70"}`}
 							>
-								<View style={{ position: "relative", width: 90, height: 135 }}>
+								<View className={` rounded-lg h-36 w-24`}>
 									<Image
 										source={{
 											uri:
 												TMDB.img(item.poster_path, "w300") ??
 												"https://picsum.photos/200/300",
 										}}
-										style={{
-											width: 90,
-											height: 135,
-											borderRadius: 8,
-											borderWidth: selected?.tmdb_id === item.tmdb_id ? 2 : 0,
-											borderColor:
-												selected?.tmdb_id === item.tmdb_id
-													? "#fff"
-													: "transparent",
-										}}
+										className={`${item.heartPoints <= 0 ? "bg-gray-400 opacity-20" : ""} rounded-lg h-36 w-24 ${selected?.tmdb_id === item.tmdb_id ? "border-2 border-white" : ""} ${item.heartPoints <= 0 ? "border-2 border-alerts-error" : ""}`}
 									/>
-									<View
-										style={{
-											position: "absolute",
-											left: 0,
-											right: 0,
-											bottom: 4,
-											alignItems: "center",
-										}}
-									>
+									<View className="absolute left-0 right-0 bottom-0 align-middle items-center justify-center">
 										<Text
-											className="text-lg"
+											className="text-lg text-text font-rubik-semibold"
 											style={{
-												color: "#FF3B6A",
-												fontWeight: "bold",
 												textShadowColor: "#fff",
 												textShadowRadius: 6,
 											}}
@@ -279,12 +334,28 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 					}}
 				/>
 				<Pressable
-					className="bg-alerts-error rounded-2xl items-center h-16 justify-center p-4 flex-row w-full"
-					onPress={handleDealDamage(selected?.id)}
+					className={`${isMyTurn ? "bg-brand-accent" : "bg-gray-600"} rounded-2xl items-center h-16 justify-center p-4 flex-row w-full`}
+					onPress={selected ? handleDealDamage(selected.id) : undefined}
+					disabled={!isMyTurn}
 				>
 					<Image
 						source={require("../../../assets/icons/sword.png")}
 						className="h-16 w-16 rounded-full mr-2"
+					/>
+					{isMyTurn && (
+						<Text className="text-white font-rubik-extrabold text-lg">
+							Twoja kolej {currentUser}
+						</Text>
+					)}
+					{!isMyTurn && (
+						<Text className="text-alerts-error font-rubik-extrabold text-lg">
+							{currentUser} wybiera swój cel
+						</Text>
+					)}
+					<Image
+						source={require("../../../assets/icons/sword.png")}
+						className="h-16 w-16 rounded-full mr-2 rotate-180"
+						style={{ transform: [{ scaleX: -1 }] }}
 					/>
 				</Pressable>
 			</View>

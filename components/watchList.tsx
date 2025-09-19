@@ -15,7 +15,7 @@ export function WatchList(props: { orientation?: "vertical" | "horizontal" }) {
 			size: "w300" | "w500" | "w780" | "original" = "w500"
 		) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
 		headers: {
-			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_KEY}`,
+			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
 			"Content-Type": "application/json;charset=utf-8",
 		} as HeadersInit,
 	};

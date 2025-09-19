@@ -26,7 +26,7 @@ export function MovieGrid({
 	scrollEnabled = false,
 	imagePlaceholder = false,
 	placeholder,
-	maxItems = 12,
+	maxItems = 20,
 	itemWidth = 120,
 	itemHeight = 180,
 	showTitle = true,
@@ -34,14 +34,12 @@ export function MovieGrid({
 	titleSlotHeight = 40,
 }: Props) {
 	if (loading) return null;
-
 	const horizontal = orientation === "horizontal";
 	const items = data.slice(0, maxItems);
 	const withTitleH = horizontal && showTitle && showTitleInHorizontal;
 	const listHeight = horizontal
 		? itemHeight + (withTitleH ? titleSlotHeight : 0)
 		: undefined;
-
 	return (
 		<FlatList
 			key={horizontal ? "h" : `v-${columns}`}
@@ -57,9 +55,7 @@ export function MovieGrid({
 			ItemSeparatorComponent={() => (
 				<View className={horizontal ? "w-2" : "h-4"} />
 			)}
-			columnWrapperStyle={
-				horizontal ? undefined : { gap: 8 }
-			}
+			columnWrapperStyle={horizontal ? undefined : { gap: 8 }}
 			renderItem={({ item }) => {
 				const wrapperStyle = horizontal
 					? {
@@ -98,9 +94,6 @@ export function MovieGrid({
 					</View>
 				);
 			}}
-			ListEmptyComponent={
-				<Text className="text-text h-24">Brak filmów do wyświetlenia</Text>
-			}
 			initialNumToRender={Math.min(6, items.length)}
 			removeClippedSubviews
 		/>

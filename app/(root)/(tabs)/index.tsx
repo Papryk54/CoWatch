@@ -1,42 +1,43 @@
 import { CustomListsSection } from "@/components/CustomListsSection";
-import Friends from "@/components/friends";
+import { MovieSearch } from "@/components/movieSearch";
 import { PopularMoviesGrid } from "@/components/popularMoviesGrid";
+import PullToRefreshWrapper from "@/components/pullToRefreshWrapper";
+import SetUserName from "@/components/setUserName";
 import { WatchList } from "@/components/watchList";
 import { useGlobalContext } from "@/lib/global-provider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect } from "expo-router";
-import React from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import React, { useState } from "react";
+import { Pressable, Text, View } from "react-native";
 
 const Index = () => {
 	const { isLogged, loading } = useGlobalContext();
-
+	const [refreshing, setRefreshing] = useState(false);
 	if (loading) return null;
+
 	if (!isLogged) return <Redirect href="/sign-in" />;
 
+	const onRefresh = async () => {
+		setRefreshing(true);
+		await AsyncStorage.clear();
+		setRefreshing(false);
+	};
+
 	return (
-		<ScrollView
-			className="flex-1 bg-brand-bgc"
-			contentContainerClassName="px-4 pt-2 pb-10"
-			showsVerticalScrollIndicator={false}
-		>
-			<Text className="font-rubik-extrabold text-text text-2xl text-center">
-				CoWatch
-			</Text>
-
-			<Friends></Friends>
-			<View className="mt-3">
-				<TextInput
-					placeholder="Szukaj…"
-					placeholderTextColor="#DDDDDD88"
-					className="bg-brand-dark rounded-xl px-4 py-3 font-rubik text-text"
-				/>
+		<PullToRefreshWrapper onRefresh={onRefresh}>
+			<View className="px-4 pt-2 pb-10 flex-1 bg-brand-bgc">
+				<Pressable onPress={onRefresh}>
+					<Text className="font-rubik-extrabold text-text text-2xl text-center my-4">
+						CoWatch
+					</Text>
+				</Pressable>
+				<MovieSearch />
+				<SetUserName />
+				<WatchList orientation="horizontal" />
+				<CustomListsSection />
+				<PopularMoviesGrid orientation="vertical" />
 			</View>
-			<WatchList orientation="horizontal"></WatchList>
-
-			<CustomListsSection />
-
-			<PopularMoviesGrid orientation="vertical" />
-		</ScrollView>
+		</PullToRefreshWrapper>
 	);
 };
 

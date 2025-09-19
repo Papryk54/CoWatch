@@ -35,7 +35,6 @@ export function MovieTile({
 	const ratingText = Number.isFinite(item.vote_average)
 		? (Math.round(item.vote_average * 10) / 10).toFixed(0)
 		: "-";
-
 	const fallback =
 		placeholder ?? require("../assets/images/posters/moviePoster7.png");
 
@@ -67,7 +66,7 @@ export function MovieTile({
 			onResponderRelease={() => setPressed(false)}
 			onResponderTerminate={() => setPressed(false)}
 		>
-			<Link href={`/properties/${item.id}`}>
+			<Link href={`/(root)/properties/${item.id}`}>
 				<ImageBackground
 					source={src}
 					className="w-full h-full"

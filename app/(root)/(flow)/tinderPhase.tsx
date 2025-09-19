@@ -12,7 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-	ActivityIndicator,
 	Animated,
 	Dimensions,
 	Image,
@@ -49,7 +48,7 @@ const TMDB = {
 		size: "w300" | "w500" | "w780" | "original" = "w500"
 	) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
 	headers: {
-		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_KEY}`,
+		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
 		"Content-Type": "application/json;charset=utf-8",
 	} as HeadersInit,
 };
@@ -282,6 +281,7 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 			setMovies(details);
 			setIndex(0);
 		} catch (e: any) {
+			console.log("ERROR occurs in load:", e);
 			setErr(e?.message ?? "Nie udało się pobrać filmów.");
 		} finally {
 			setLoading(false);
@@ -358,7 +358,7 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 
 	const handleSendScores = async () => {
 		if (!sessionId || scoresToAdd.length === 0) return;
-
+		setLoading(true);
 		try {
 			const session: any = await databases.getDocument(
 				config.databaseId!,
@@ -405,8 +405,8 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 
 			setScoresToAdd([]);
 			updateStatus(session.$id, "first_phase");
-
 			onDone();
+			setLoading(false);
 		} catch (e) {
 			console.log("ERROR:", e);
 		}
@@ -474,12 +474,7 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 				</LinearGradient>
 			</Animated.View>
 
-			{loading && (
-				<View className="items-center">
-					<ActivityIndicator />
-					<Text className="text-text mt-3">Ładuję filmy…</Text>
-				</View>
-			)}
+			{/* {loading && <LoadingScreen></LoadingScreen>} */}
 
 			{err && <Text className="text-red-400 font-rubik">{err}</Text>}
 

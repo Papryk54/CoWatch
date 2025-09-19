@@ -1,11 +1,10 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 
 const LoadingScreen: React.FC = () => (
-	<View className="absolute z-20 justify-center items-center bg-brand-bgc w-screen h-screen flex-1">
-		<Text className="text-white text-4xl font-bold tracking-wider font-rubik-bold">
-			CoWatch
-		</Text>
+	<View className="absolute top-0 left-0 z-50 w-[100%] h-[100%] flex align-middle justify-center items-center bg-brand-bgc">
+		<ActivityIndicator />
+		<Text className="text-text">Proszę czekać...</Text>
 	</View>
 );
 
