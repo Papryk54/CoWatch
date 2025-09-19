@@ -1,4 +1,5 @@
-import { addToWatchlist, getMyProfile } from "@/lib/appwrite";
+import { getMyProfile } from "@/lib/appwrite";
+import { addToWatchlist } from "@/lib/appwrite/appwriteWatchlist";
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 

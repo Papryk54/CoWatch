@@ -1,4 +1,7 @@
-import { addUserToFriends, findProfileById } from "@/lib/appwrite";
+import {
+	addUserToFriends,
+	findProfileById,
+} from "@/lib/appwrite/appwriteFriends";
 import React, { useState } from "react";
 import {
 	ActivityIndicator,
@@ -32,6 +35,7 @@ const Friends: React.FC = () => {
 				setFriend(doc);
 			} else setError("Nie znaleziono użytkownika.");
 		} catch (e) {
+			console.log(e);
 			setError("Błąd podczas wyszukiwania.");
 		} finally {
 			setSearching(false);
@@ -53,13 +57,6 @@ const Friends: React.FC = () => {
 			setAdding(false);
 		}
 	};
-
-	const friendLabel =
-		friend?.displayName ??
-		friend?.username ??
-		friend?.accountId ??
-		friend?.$id ??
-		"Użytkownik";
 
 	return (
 		<View className="gap-3 mb-12">

@@ -7,20 +7,17 @@ import { WatchList } from "@/components/watchList";
 import { useGlobalContext } from "@/lib/global-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 const Index = () => {
 	const { isLogged, loading } = useGlobalContext();
-	const [refreshing, setRefreshing] = useState(false);
 	if (loading) return null;
 
 	if (!isLogged) return <Redirect href="/sign-in" />;
 
 	const onRefresh = async () => {
-		setRefreshing(true);
 		await AsyncStorage.clear();
-		setRefreshing(false);
 	};
 
 	return (

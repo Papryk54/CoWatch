@@ -1,14 +1,12 @@
 import LoadingScreen from "@/components/loadingScreen";
 import { WinnerModal } from "@/components/winnerModal";
 import {
-	attackItem,
 	client,
 	config,
-	deleteSession,
-	getCurrentUserForElimination,
 	getMyProfile,
-	getSessionItems,
 } from "@/lib/appwrite";
+import { attackItem, getCurrentUserForElimination } from "@/lib/appwrite/appwriteElimination";
+import { deleteSession, getSessionItems } from "@/lib/appwrite/appwritePickerSession";
 import React, { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 
@@ -37,7 +35,6 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 	);
 	const [selected, setSelected] = useState<SelectedMovie | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [err, setErr] = useState<string | null>(null);
 	const [showWinnerModal, setShowWinnerModal] = useState(false);
 	const [currentUser, setCurrentUser] = useState<any | null>(null);
 	const [isMyTurn, setIsMyTurn] = useState(false);
@@ -101,7 +98,7 @@ const EliminationPhase = ({ sessionId, onDone }: Props) => {
 			const firstWithHearts = merged.find((i) => i.heartPoints > 0);
 			setSelected(firstWithHearts ?? null);
 		} catch (e: any) {
-			setErr(e?.message ?? "Nie udało się pobrać filmów.");
+			console.log("ERROR occurs in load: ", e);
 		} finally {
 			setLoading(false);
 		}

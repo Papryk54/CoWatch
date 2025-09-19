@@ -58,7 +58,6 @@ export default function MovieDetailsScreen() {
 	const [movie, setMovie] = useState<TMDBMovie | null>(null);
 	const [credits, setCredits] = useState<TMDBCredits | null>(null);
 	const [similar, setSimilar] = useState<Movie[]>([]);
-	const [expanded, setExpanded] = useState(false);
 
 	useEffect(() => {
 		let mounted = true;

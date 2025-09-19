@@ -3,10 +3,8 @@ import ProgressBar from "@/components/progressBar";
 import {
 	config,
 	databases,
-	getSessionItems,
-	setItemScore,
-	updateStatus,
 } from "@/lib/appwrite";
+import { getSessionItems, setItemScore, updateStatus } from "@/lib/appwrite/appwritePickerSession";
 import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 

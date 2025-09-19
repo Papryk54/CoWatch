@@ -1,10 +1,9 @@
 import {
-	createSession,
-	getMyFriends,
 	getMyProfile,
-	getMyWatchlists,
-	getWatchlistItems,
 } from "@/lib/appwrite";
+import { getMyFriends } from "@/lib/appwrite/appwriteFriends";
+import { createSession } from "@/lib/appwrite/appwritePickerSession";
+import { getMyWatchlists, getWatchlistItems } from "@/lib/appwrite/appwriteWatchlist";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, Text, View } from "react-native";

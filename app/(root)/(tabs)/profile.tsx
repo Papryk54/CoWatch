@@ -5,15 +5,29 @@ import {
 	client,
 	config,
 	getMyProfile,
-	getPowerUpStatus,
-	getSessionsByUser,
-	updateStatus,
 } from "@/lib/appwrite";
+import { getPowerUpStatus, getSessionsByUser, updateStatus } from "@/lib/appwrite/appwritePickerSession";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 
-const UserRow = ({ user, sessionId, sessionStep, thisUser, handleInvite }) => (
+type UserRowProps = {
+	user: {
+		id: string;
+		invite: boolean;
+		firstPhase: boolean;
+		secondPhase: boolean;
+		thirdPhase: boolean;
+		isOwner: boolean;
+		isMe: boolean;
+	};
+	sessionId: string;
+	sessionStep: number;
+	thisUser: any;
+	handleInvite: (sessionId: string, invite: boolean) => void;
+};
+
+const UserRow = ({ user, sessionId, sessionStep, thisUser, handleInvite }: UserRowProps) => (
 	<View>
 		<Text className="text-text font-rubik-medium">{user.id}</Text>
 		<Text className="text-text font-rubik-medium">

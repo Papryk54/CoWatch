@@ -3,11 +3,8 @@ import {
 	config,
 	databases,
 	getMyProfile,
-	getPowerUpStatus,
-	setItemScore,
-	updatePowerUp,
-	updateStatus,
 } from "@/lib/appwrite";
+import { getPowerUpStatus, setItemScore, updatePowerUp, updateStatus } from "@/lib/appwrite/appwritePickerSession";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -290,7 +287,6 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 
 	useEffect(() => {
 		load();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [sessionId]);
 
 	const snapAndNext = (dir: "left" | "right", currentId: number) => {
@@ -352,7 +348,6 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 					}).start();
 				},
 			}),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[showInfo, translate, index, movies]
 	);
 

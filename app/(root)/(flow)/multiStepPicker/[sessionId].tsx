@@ -1,13 +1,13 @@
 import FriendStatusRow from "@/components/friendStatusRow";
 import LoadingScreen from "@/components/loadingScreen";
+import { getMyProfile } from "@/lib/appwrite";
 import {
 	addItemsToSession,
 	getFriendsForGame,
-	getMyProfile,
 	getSessionItems,
 	getSessionStep,
-	getWatchlistItems,
-} from "@/lib/appwrite";
+} from "@/lib/appwrite/appwritePickerSession";
+import { getWatchlistItems } from "@/lib/appwrite/appwriteWatchlist";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
