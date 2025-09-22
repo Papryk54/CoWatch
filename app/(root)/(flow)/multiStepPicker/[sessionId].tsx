@@ -1,5 +1,5 @@
-import FriendStatusRow from "@/components/friendStatusRow";
-import LoadingScreen from "@/components/loadingScreen";
+import FriendStatusRow from "@/components/ui/friendStatusRow";
+import LoadingScreen from "@/components/utils/loadingScreen";
 import { getMyProfile } from "@/lib/appwrite";
 import {
 	addItemsToSession,
@@ -39,14 +39,14 @@ const MultiStepPicker = () => {
 		try {
 			const me = await getMyProfile();
 			const myListId = me.watchlist_main.$id;
-			const myIds = (await getWatchlistItems(myListId)).documents.map(
+			const myIds = (await getWatchlistItems(myListId)).map(
 				(d) => d.tmdb_id
 			);
 
 			const friendListIds = friends.map((f) => f.watchlist_main);
 			const friendsIds = (
 				await Promise.all(friendListIds.map((id) => getWatchlistItems(id)))
-			).flatMap((r) => r.documents.map((d) => d.tmdb_id));
+			).flatMap((r) => r.map((d) => d.tmdb_id));
 
 			const uniqueIds = [...new Set([...myIds, ...friendsIds])];
 			const itemsInSession = await getSessionItems(sessionId);

@@ -37,13 +37,6 @@ export async function getCurrentUserForElimination(sessionId: string) {
   }
 }
 
-export async function getSessionUsers(sessionId: string) {
-  const session = await getSession(sessionId);
-
-  const userIds = [session.allUsersInSession];
-  return userIds;
-}
-
 export async function nextUserTurn(sessionId: string) {
   const session = await getSession(sessionId);
   const allUsers = session.allUsersInSession;

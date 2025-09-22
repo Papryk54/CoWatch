@@ -1,9 +1,10 @@
+import { WatchlistItem } from "@/lib/tmdb";
 import React from "react";
 import { FlatList, ImageSourcePropType, Text, View } from "react-native";
-import { Movie, MovieTile } from "./movieTile";
+import { MovieTile } from "../ui/movieTile";
 
 type Props = {
-	data: Movie[];
+	data: WatchlistItem[];
 	loading?: boolean;
 	orientation?: "vertical" | "horizontal";
 	columns?: number;
@@ -35,7 +36,7 @@ export function MovieGrid({
 }: Props) {
 	if (loading) return null;
 	const horizontal = orientation === "horizontal";
-	const items = data.slice(0, maxItems);
+	const items = data.filter(Boolean).slice(0, maxItems);
 	const withTitleH = horizontal && showTitle && showTitleInHorizontal;
 	const listHeight = horizontal
 		? itemHeight + (withTitleH ? titleSlotHeight : 0)
@@ -46,7 +47,7 @@ export function MovieGrid({
 			data={items}
 			horizontal={horizontal}
 			numColumns={horizontal ? 1 : columns}
-			keyExtractor={(item) => String(item.id)}
+			keyExtractor={(item) => String(item.tmdb.id)}
 			style={horizontal ? { height: listHeight } : undefined}
 			scrollEnabled={horizontal ? true : scrollEnabled}
 			showsHorizontalScrollIndicator={false}
@@ -57,6 +58,7 @@ export function MovieGrid({
 			)}
 			columnWrapperStyle={horizontal ? undefined : { gap: 8 }}
 			renderItem={({ item }) => {
+				if (!item || !item.tmdb) return null;
 				const wrapperStyle = horizontal
 					? {
 							width: itemWidth,
@@ -87,7 +89,7 @@ export function MovieGrid({
 										numberOfLines={2}
 										className="text-text font-rubik-medium text-xs"
 									>
-										{item.title}
+										{item.tmdb.title ?? item.tmdb.name}
 									</Text>
 								</View>
 							)}

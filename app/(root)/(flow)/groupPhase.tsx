@@ -1,10 +1,11 @@
-import LoadingScreen from "@/components/loadingScreen";
-import ProgressBar from "@/components/progressBar";
+import ProgressBar from "@/components/ui/progressBar";
+import LoadingScreen from "@/components/utils/loadingScreen";
+import { config, databases } from "@/lib/appwrite";
 import {
-	config,
-	databases,
-} from "@/lib/appwrite";
-import { getSessionItems, setItemScore, updateStatus } from "@/lib/appwrite/appwritePickerSession";
+	getSessionItems,
+	setItemScore,
+	updateStatus,
+} from "@/lib/appwrite/appwritePickerSession";
 import React, { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 

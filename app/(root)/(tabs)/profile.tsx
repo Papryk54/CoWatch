@@ -1,12 +1,12 @@
-import Friends from "@/components/friends";
-import PullToRefreshWrapper from "@/components/pullToRefreshWrapper";
-import WaitingForOthersButton from "@/components/waitingForOthersButton";
+import Friends from "@/components/features/friends";
+import PullToRefreshWrapper from "@/components/utils/pullToRefreshWrapper";
+import WaitingForOthersButton from "@/components/utils/waitingForOthersButton";
+import { client, config, getMyProfile } from "@/lib/appwrite";
 import {
-	client,
-	config,
-	getMyProfile,
-} from "@/lib/appwrite";
-import { getPowerUpStatus, getSessionsByUser, updateStatus } from "@/lib/appwrite/appwritePickerSession";
+	getPowerUpStatus,
+	getSessionsByUser,
+	updateStatus,
+} from "@/lib/appwrite/appwritePickerSession";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
@@ -27,7 +27,13 @@ type UserRowProps = {
 	handleInvite: (sessionId: string, invite: boolean) => void;
 };
 
-const UserRow = ({ user, sessionId, sessionStep, thisUser, handleInvite }: UserRowProps) => (
+const UserRow = ({
+	user,
+	sessionId,
+	sessionStep,
+	thisUser,
+	handleInvite,
+}: UserRowProps) => (
 	<View>
 		<Text className="text-text font-rubik-medium">{user.id}</Text>
 		<Text className="text-text font-rubik-medium">

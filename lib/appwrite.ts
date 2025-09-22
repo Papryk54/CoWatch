@@ -26,7 +26,6 @@ export const config = {
 	databaseMultiStepPickerItems:
 		process.env.EXPO_PUBLIC_APPWRITE_DATABASE_MULTI_STEP_PICKER_ITEMS,
 	databasePowerUps: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_POWER_UPS,
-	tmdbApiKey: process.env.EXPO_PUBLIC_TMDB_API_KEY,
 };
 
 export const client = new Client();
@@ -164,9 +163,3 @@ export async function getMyProfile() {
 	);
 	return res.documents[0] ?? null;
 }
-
-
-
-// ELIMINATION PHASE
-
-

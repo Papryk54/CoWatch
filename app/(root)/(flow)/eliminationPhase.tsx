@@ -1,12 +1,14 @@
-import LoadingScreen from "@/components/loadingScreen";
-import { WinnerModal } from "@/components/winnerModal";
+import LoadingScreen from "@/components/utils/loadingScreen";
+import { WinnerModal } from "@/components/modals/winnerModal";
+import { client, config, getMyProfile } from "@/lib/appwrite";
 import {
-	client,
-	config,
-	getMyProfile,
-} from "@/lib/appwrite";
-import { attackItem, getCurrentUserForElimination } from "@/lib/appwrite/appwriteElimination";
-import { deleteSession, getSessionItems } from "@/lib/appwrite/appwritePickerSession";
+	attackItem,
+	getCurrentUserForElimination,
+} from "@/lib/appwrite/appwriteElimination";
+import {
+	deleteSession,
+	getSessionItems,
+} from "@/lib/appwrite/appwritePickerSession";
 import React, { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 
@@ -15,7 +17,7 @@ type Props = {
 	onDone: () => void;
 };
 
-type MovieItem = {
+type MovieItem = { // POMYŚLEĆ CZY NA PEWNO MUSI BYĆ TAKI OBSZERNY, MAMY TERAZ PRZECIEŻ type WatchlistItem
 	id: string;
 	tmdb_id: number;
 	score: number;

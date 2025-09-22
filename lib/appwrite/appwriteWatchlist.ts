@@ -1,7 +1,6 @@
 import { Query } from "react-native-appwrite";
 import { account, config, databases, getMyProfile } from "../appwrite";
 
-
 export async function getMyWatchlists() {
 	const me = await account.get();
 
@@ -10,6 +9,34 @@ export async function getMyWatchlists() {
 		config.databaseWatchlist!,
 		[Query.equal("user_id", me.$id)]
 	);
+}
+
+export async function getCustomWatchlists() {
+	const me = await account.get();
+
+	const result = await databases.listDocuments(
+		config.databaseId!,
+		config.databaseWatchlist!,
+		[Query.equal("user_id", me.$id), Query.equal("is_default", false)]
+	);
+	return result.documents;
+}
+
+export async function getDefaultWatchlist() {
+	try {
+		const me = await account.get();
+
+		const result = await databases.listDocuments(
+			config.databaseId!,
+			config.databaseWatchlist!,
+			[Query.equal("user_id", me.$id), Query.equal("is_default", true)]
+		);
+		const defaultWatchlist = result.documents[0];
+		return defaultWatchlist;
+	} catch (e) {
+		console.log("ERROR occurs in getDefaultWatchlist: ", e);
+		return null;
+	}
 }
 
 export async function createCustomWatchlist(name: string, tmdb_id?: number) {
@@ -36,11 +63,12 @@ export async function createCustomWatchlist(name: string, tmdb_id?: number) {
 }
 
 export async function getWatchlistItems(watchList_id: string) {
-	return databases.listDocuments(
+	const item = await databases.listDocuments(
 		config.databaseId!,
 		config.databaseWatchlistItems!,
 		[Query.equal("watchList_id", watchList_id)]
 	);
+	return item.documents;
 }
 
 export async function addToWatchlist(watchList_id: string, tmdb_id: number) {

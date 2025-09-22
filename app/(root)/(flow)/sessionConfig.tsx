@@ -20,18 +20,6 @@ export default function SessionConfig() {
 	const MIN_TITLES = 4;
 	const STANDARD_TITLES = 12;
 
-	const TMDB = {
-		base: "https://api.themoviedb.org/3",
-		img: (
-			path?: string | null,
-			size: "w300" | "w500" | "w780" | "original" = "w500"
-		) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
-		headers: {
-			Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
-			"Content-Type": "application/json;charset=utf-8",
-		} as HeadersInit,
-	};
-
 	const load = async () => {
 		try {
 			const friendsRes = await getMyFriends();
@@ -68,7 +56,7 @@ export default function SessionConfig() {
 					let total = 0;
 					for (let i = 0; i < newSelected.length; i++) {
 						const watchlist = await getWatchlistItems(newSelected[i]);
-						total += watchlist?.documents.length ?? 0;
+						total += watchlist?.length ?? 0;
 					}
 					setTitlesInWatchlists(total);
 				} catch (e) {

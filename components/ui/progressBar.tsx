@@ -17,7 +17,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ index, movies, done }) => {
 			<View className="flex-row items-center justify-center">
 				{done && (
 					<Image
-						source={require("../assets/icons/like.png")}
+						source={require("../../assets/icons/like.png")}
 						className="w-8 h-8"
 					/>
 				)}

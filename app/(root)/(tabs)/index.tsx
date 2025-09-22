@@ -1,9 +1,7 @@
-import { CustomListsSection } from "@/components/CustomListsSection";
-import { MovieSearch } from "@/components/movieSearch";
-import { PopularMoviesGrid } from "@/components/popularMoviesGrid";
-import PullToRefreshWrapper from "@/components/pullToRefreshWrapper";
-import SetUserName from "@/components/setUserName";
-import { WatchList } from "@/components/watchList";
+import { MovieSearch } from "@/components/features/movieSearch";
+import SetUserName from "@/components/features/setUserName";
+import AllWatchlistDisplayHome from "@/components/layout/allWatchlistDisplayHome";
+import PullToRefreshWrapper from "@/components/utils/pullToRefreshWrapper";
 import { useGlobalContext } from "@/lib/global-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect } from "expo-router";
@@ -30,9 +28,9 @@ const Index = () => {
 				</Pressable>
 				<MovieSearch />
 				<SetUserName />
-				<WatchList orientation="horizontal" />
-				<CustomListsSection />
-				<PopularMoviesGrid orientation="vertical" />
+				<View className="mt-4 -mx-4">
+					<AllWatchlistDisplayHome />
+				</View>
 			</View>
 		</PullToRefreshWrapper>
 	);

@@ -164,8 +164,6 @@ export async function getSessionsByUser() {
 	);
 }
 
-export async function getFriendsSessionsStatus() {}
-
 export async function addItemToSession(tmdb_id: number) {
 	return databases.createDocument(
 		config.databaseId!,

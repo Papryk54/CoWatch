@@ -1,10 +1,11 @@
-import ProgressBar from "@/components/progressBar";
+import ProgressBar from "@/components/ui/progressBar";
+import { config, databases, getMyProfile } from "@/lib/appwrite";
 import {
-	config,
-	databases,
-	getMyProfile,
-} from "@/lib/appwrite";
-import { getPowerUpStatus, setItemScore, updatePowerUp, updateStatus } from "@/lib/appwrite/appwritePickerSession";
+	getPowerUpStatus,
+	setItemScore,
+	updatePowerUp,
+	updateStatus,
+} from "@/lib/appwrite/appwritePickerSession";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";

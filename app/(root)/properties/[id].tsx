@@ -1,5 +1,10 @@
-import MovieActionButtons from "@/components/movieActionButtons";
-import { Movie } from "@/components/movieTile";
+import MovieActionButtons from "@/components/utils/movieActionButtons";
+import {
+	WatchlistItem,
+	fetchTMDBItems,
+	getMergedDBandTMDBItems,
+	getTMDBCredits,
+} from "@/lib/tmdb";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -13,51 +18,21 @@ import {
 	View,
 } from "react-native";
 
-type TMDBMovie = {
-	id: number;
-	title: string;
-	overview: string;
-	poster_path: string | null;
-	backdrop_path: string | null;
-	vote_average: number;
-	release_date?: string;
-	runtime?: number;
-	genres?: { id: number; name: string }[];
-};
-
-type TMDBCredits = {
-	cast: {
-		id: number;
-		name: string;
-		character: string;
-		profile_path: string | null;
-	}[];
-};
-
 const FALLBACK_POSTER = require("@/assets/images/posters/moviePoster7.png");
 const RATING_ICON = require("@/assets/icons/rating.png");
 
-const TMDB = {
-	base: "https://api.themoviedb.org/3",
-	img: (
-		path?: string | null,
-		size: "w300" | "w500" | "w780" | "original" = "w500"
-	) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined),
-	headers: {
-		Authorization: `Bearer ${process.env.EXPO_PUBLIC_TMDB_API_CODE}`,
-		"Content-Type": "application/json;charset=utf-8",
-	} as HeadersInit,
-};
-
-export default function MovieDetailsScreen() {
-	const { id } = useLocalSearchParams<{ id: string }>();
+export default function ItemDetailsScreen() {
+	const { id, type } = useLocalSearchParams<{
+		id: string;
+		type: "movie" | "tv";
+	}>();
 	const router = useRouter();
 
 	const [loading, setLoading] = useState(true);
 	const [err, setErr] = useState<string | null>(null);
-	const [movie, setMovie] = useState<TMDBMovie | null>(null);
-	const [credits, setCredits] = useState<TMDBCredits | null>(null);
-	const [similar, setSimilar] = useState<Movie[]>([]);
+	const [item, setItem] = useState<any | null>(null);
+	const [credits, setCredits] = useState<any | null>(null);
+	const [similar, setSimilar] = useState<WatchlistItem[]>([]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -65,40 +40,46 @@ export default function MovieDetailsScreen() {
 			try {
 				setLoading(true);
 				setErr(null);
-				const [dRes, cRes, sRes] = await Promise.all([
-					fetch(
-						`${TMDB.base}/movie/${id}?language=pl-PL&append_to_response=release_dates`,
-						{ headers: TMDB.headers }
-					),
-					fetch(`${TMDB.base}/movie/${id}/credits?language=pl-PL`, {
-						headers: TMDB.headers,
-					}),
-					fetch(`${TMDB.base}/movie/${id}/similar?language=pl-PL&page=1`, {
-						headers: TMDB.headers,
+
+				const [itemData, creditsData] = await Promise.all([
+					fetchTMDBItems({ type, action: "find", itemId: Number(id) }),
+					getTMDBCredits(Number(id), type),
+					getMergedDBandTMDBItems({
+						type,
+						action: "search",
+						search: "",
+						page: 1,
 					}),
 				]);
-
-				if (!dRes.ok) throw new Error("Nie udało się pobrać danych filmu.");
-				const dJson = (await dRes.json()) as TMDBMovie;
-
-				const cJson = cRes.ok
-					? ((await cRes.json()) as TMDBCredits)
-					: { cast: [] };
-				const sJson = sRes.ok ? await sRes.json() : { results: [] };
+				console.log("Fetched item data: ", itemData);
+				console.log("Fetched credits data: ", creditsData);
 
 				if (!mounted) return;
 
-				setMovie(dJson);
-				setCredits(cJson);
+				if (!itemData) throw new Error("Nie udało się pobrać danych filmu.");
+				setItem(itemData);
 
-				const mappedSimilar: Movie[] = (sJson.results ?? []).map((m: any) => ({
-					id: m.id,
-					title: m.title,
-					vote_average: m.vote_average ?? 0,
-					poster_path: m.poster_path,
-				}));
-				setSimilar(mappedSimilar);
+				setCredits(creditsData?.cast ? creditsData : { cast: [] });
+
+				const sItems = await fetchTMDBItems({
+					type,
+					action: "similar",
+					itemId: Number(id),
+					page: 1,
+				});
+				const similarResults =
+					sItems?.results && Array.isArray(sItems.results)
+						? sItems.results
+						: [];
+				const similarItems = similarResults.map((tmdb: any) => {
+					return { db: {} as any, tmdb };
+				});
+				similarItems.sort((a: any, b: any) => {
+					return (b.tmdb.vote_average || 0) - (a.tmdb.vote_count || 0);
+				});
+				setSimilar(similarItems.slice(0, 8));
 			} catch (e: any) {
+				console.log("ERROR occurs in MovieDetailsScreen: ", e);
 				setErr(e?.message ?? "Wystąpił błąd.");
 			} finally {
 				setLoading(false);
@@ -110,17 +91,17 @@ export default function MovieDetailsScreen() {
 		};
 	}, [id]);
 
-	const year = movie?.release_date?.split("-")[0] || undefined;
+	const year = item?.release_date?.split("-")[0] || undefined;
 	const ratingText =
-		movie?.vote_average != null && Number.isFinite(movie.vote_average)
-			? (Math.round(movie.vote_average * 10) / 10).toFixed(0)
+		item?.vote_average != null && Number.isFinite(item.vote_average)
+			? (Math.round(item.vote_average * 10) / 10).toFixed(0)
 			: "-";
 	const metaLine = [
 		year,
-		movie?.runtime && `${movie.runtime} min`,
-		movie?.genres
+		item?.runtime && `${item.runtime} min`,
+		item?.genres
 			?.slice(0, 3)
-			.map((g) => g.name)
+			.map((g: any) => g.name)
 			.join(", "),
 	]
 		.filter(Boolean)
@@ -138,7 +119,7 @@ export default function MovieDetailsScreen() {
 		);
 	}
 
-	if (err || !movie) {
+	if (err || !item) {
 		return (
 			<>
 				<Stack.Screen options={{ title: "Błąd" }} />
@@ -166,17 +147,19 @@ export default function MovieDetailsScreen() {
 					renderItem={null}
 					ListHeaderComponent={() => (
 						<View>
-							<View className="w-screen -my-6 relative">
+							<View className="w-screen -my-6 absolute">
 								<View className="absolute inset-0 bg-brand-bgc" />
 								<Image
 									source={
-										movie.poster_path
-											? { uri: TMDB.img(movie.poster_path)! }
+										item.poster_path
+											? {
+													uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+												}
 											: FALLBACK_POSTER
 									}
 									defaultSource={FALLBACK_POSTER}
 									onError={() => {
-										setMovie({ ...movie, poster_path: null });
+										setItem({ ...item, poster_path: null });
 									}}
 									resizeMode="cover"
 									className="w-full aspect-[2/3] mt-28"
@@ -196,9 +179,9 @@ export default function MovieDetailsScreen() {
 								/>
 							</View>
 
-							<View className="absolute flex top-9 -left-4 w-screen px-4">
+							<View className="w-screen px-4 mt-12">
 								<Text className="text-text text-3xl font-bold text-center">
-									{movie.title}
+									{item.title || item.name}
 								</Text>
 
 								<View className="items-center mt-1">
@@ -207,10 +190,10 @@ export default function MovieDetailsScreen() {
 									</Text>
 								</View>
 							</View>
-							<View className="px-2">
-								<View className="-mt-48 rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+							<View className="px-2 mt-12">
+								<View className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
 									<Text className="text-text text-base leading-6 text-center">
-										{movie.overview || "Brak opisu."}
+										{item.overview || "Brak opisu."}
 									</Text>
 								</View>
 
@@ -241,7 +224,9 @@ export default function MovieDetailsScreen() {
 													<Image
 														source={
 															item.profile_path
-																? { uri: TMDB.img(item.profile_path)! }
+																? {
+																		uri: `https://image.tmdb.org/t/p/w500${item.profile_path}`,
+																	}
 																: FALLBACK_POSTER
 														}
 														defaultSource={FALLBACK_POSTER}
@@ -271,19 +256,25 @@ export default function MovieDetailsScreen() {
 										<FlatList
 											data={similar}
 											horizontal
-											keyExtractor={(item) => item.id.toString()}
+											keyExtractor={(item) => item.tmdb.id.toString()}
 											showsHorizontalScrollIndicator={false}
 											renderItem={({ item }) => (
 												<View className="w-44 h-full mr-4 relative rounded-md bg-slate-200">
-													<Link href={`/(root)/properties/${item.id}`}>
+													<Link href={`/(root)/properties/${item.tmdb.id}`}>
 														<ImageBackground
-															source={{ uri: TMDB.img(item.poster_path)! }}
+															source={
+																item.tmdb.poster_path
+																	? {
+																			uri: `https://image.tmdb.org/t/p/w500${item.tmdb.poster_path}`,
+																		}
+																	: FALLBACK_POSTER
+															}
 															className="w-full h-full"
 															resizeMode="cover"
 														>
 															<View className="flex-row items-center gap-1 px-2 py-1 rounded-full bg-black/60 absolute top-2 right-2">
 																<Text className="font-rubik-semibold text-text text-xs leading-none ">
-																	{ratingText}
+																	{item.tmdb.vote_average}
 																</Text>
 																<Image
 																	source={require("@/assets/icons/rating.png")}
@@ -302,7 +293,7 @@ export default function MovieDetailsScreen() {
 														className="text-text font-rubik-semibold text-md ml-1 w-full absolute bottom-0 "
 														numberOfLines={2}
 													>
-														{item.title}
+														{item.tmdb.title || item.tmdb.name}
 													</Text>
 												</View>
 											)}
@@ -313,7 +304,7 @@ export default function MovieDetailsScreen() {
 						</View>
 					)}
 				/>
-				<MovieActionButtons movieId={movie.id}></MovieActionButtons>
+				<MovieActionButtons movieId={item.id}></MovieActionButtons>
 			</View>
 		</>
 	);
