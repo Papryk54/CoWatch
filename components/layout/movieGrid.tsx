@@ -2,6 +2,7 @@ import { WatchlistItem } from "@/lib/tmdb";
 import React from "react";
 import { FlatList, ImageSourcePropType, Text, View } from "react-native";
 import { MovieTile } from "../ui/movieTile";
+import WatchlistLoading from "../utils/watchlistLoading";
 
 type Props = {
 	data: WatchlistItem[];
@@ -34,20 +35,34 @@ export function MovieGrid({
 	showTitleInHorizontal = true,
 	titleSlotHeight = 40,
 }: Props) {
-	if (loading) return null;
+	if (loading) {
+		return (
+			<WatchlistLoading
+				itemWidth={itemWidth}
+				itemHeight={itemHeight}
+				titleSlotHeight={titleSlotHeight}
+				orientation="horizontal"
+				columns={columns}
+			/>
+		);
+	}
+
 	const horizontal = orientation === "horizontal";
 	const items = data.filter(Boolean).slice(0, maxItems);
 	const withTitleH = horizontal && showTitle && showTitleInHorizontal;
 	const listHeight = horizontal
 		? itemHeight + (withTitleH ? titleSlotHeight : 0)
 		: undefined;
+
 	return (
 		<FlatList
 			key={horizontal ? "h" : `v-${columns}`}
 			data={items}
 			horizontal={horizontal}
 			numColumns={horizontal ? 1 : columns}
-			keyExtractor={(item) => String(item.tmdb.id)}
+			keyExtractor={(item) =>
+				item?.tmdb?.id ? String(item.tmdb.id) : `key-${Math.random()}`
+			}
 			style={horizontal ? { height: listHeight } : undefined}
 			scrollEnabled={horizontal ? true : scrollEnabled}
 			showsHorizontalScrollIndicator={false}

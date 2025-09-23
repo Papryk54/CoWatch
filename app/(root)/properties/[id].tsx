@@ -1,3 +1,4 @@
+import LoadingScreen from "@/components/utils/loadingScreen";
 import MovieActionButtons from "@/components/utils/movieActionButtons";
 import {
 	WatchlistItem,
@@ -9,7 +10,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-	ActivityIndicator,
 	FlatList,
 	Image,
 	ImageBackground,
@@ -108,15 +108,7 @@ export default function ItemDetailsScreen() {
 		.join(" • ");
 
 	if (loading) {
-		return (
-			<>
-				<Stack.Screen options={{ title: "Wczytywanie..." }} />
-				<View className="flex-1 bg-brand-bgc items-center justify-center">
-					<ActivityIndicator />
-					<Text className="text-text mt-3">Pobieram dane filmu...</Text>
-				</View>
-			</>
-		);
+		return <LoadingScreen />;
 	}
 
 	if (err || !item) {

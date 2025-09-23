@@ -1,10 +1,13 @@
-import { getCustomWatchlists } from "@/lib/appwrite/appwriteWatchlist";
+import {
+	getCustomWatchlists,
+	getDefaultWatchlist,
+} from "@/lib/appwrite/appwriteWatchlist";
 import { getMergedDBandTMDBItems, WatchlistItem } from "@/lib/tmdb";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import CustomListsSection from "./CustomListsSection";
-import { WatchList } from "./watchList";
 import { PopularMoviesGrid } from "./popularMoviesGrid";
+import { WatchListDefault } from "./watchListDefault";
 
 const AllWatchlistDisplayHome = () => {
 	const [defaultWatchlistMovies, setDefaultWatchlistMovies] = useState<
@@ -20,23 +23,22 @@ const AllWatchlistDisplayHome = () => {
 
 	const load = async () => {
 		const customWatchlists = await getCustomWatchlists();
+		const defaultWatchlist = await getDefaultWatchlist();
 		const defaultWatchlistMovies = await getMergedDBandTMDBItems({
 			type: "movie",
 			action: "find",
+			watchlistId: defaultWatchlist!.$id,
 		});
 		const defaultWatchlistTV = await getMergedDBandTMDBItems({
 			type: "tv",
 			action: "find",
+			watchlistId: defaultWatchlist!.$id,
 		});
 		setDefaultWatchlistMovies(
-			Array.isArray(defaultWatchlistMovies)
-				? defaultWatchlistMovies
-				: defaultWatchlistMovies.results || []
+			Array.isArray(defaultWatchlistMovies) ? defaultWatchlistMovies : []
 		);
 		setDefaultWatchlistTV(
-			Array.isArray(defaultWatchlistTV)
-				? defaultWatchlistTV
-				: defaultWatchlistTV.results || []
+			Array.isArray(defaultWatchlistTV) ? defaultWatchlistTV : []
 		);
 		if (customWatchlists.length > 0) {
 			setSelectedCustomWatchlist(customWatchlists[0].watchListItems || []);
@@ -49,7 +51,7 @@ const AllWatchlistDisplayHome = () => {
 
 	return (
 		<View className="px-4 pt-2 pb-10 flex-1 bg-brand-bgc">
-			<WatchList orientation="horizontal" />
+			<WatchListDefault orientation="horizontal" />
 			<CustomListsSection items={selectedCustomWatchlist} />
 			<View className="flex-row mt-6">
 				<Pressable

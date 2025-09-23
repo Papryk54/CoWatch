@@ -43,7 +43,7 @@ export async function getMyFriends() {
 		[Query.equal("user_id", me.$id)]
 	);
 	const friendsIds = res.documents[0].friends_ids;
-
+	console.log("friendsIds: ", friendsIds);
 	try {
 		const friends = await databases.listDocuments(
 			config.databaseId!,

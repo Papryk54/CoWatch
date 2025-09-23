@@ -65,30 +65,6 @@ const UserRow = ({
 							</Pressable>
 						</View>
 					)}
-				{thisUser?.invite &&
-					!thisUser?.firstPhase &&
-					!thisUser?.secondPhase &&
-					!thisUser?.thirdPhase && (
-						<View className="flex-row justify-start mb-2">
-							<Text className="text-text font-rubik-medium">CHUJ</Text>
-						</View>
-					)}
-				{thisUser?.invite &&
-					thisUser?.firstPhase &&
-					!thisUser?.secondPhase &&
-					!thisUser?.thirdPhase && (
-						<View className="flex-row justify-start mb-2">
-							<Text className="text-text font-rubik-medium">DUPA</Text>
-						</View>
-					)}
-				{thisUser?.invite &&
-					thisUser?.firstPhase &&
-					thisUser?.secondPhase &&
-					!thisUser?.thirdPhase && (
-						<View className="flex-row justify-start mb-2">
-							<Text className="text-text font-rubik-medium">CYCKI</Text>
-						</View>
-					)}
 			</View>
 		)}
 	</View>
@@ -102,6 +78,7 @@ const Profile = () => {
 	const [isAllFirstPhase, setIsAllFirstPhase] = useState(false);
 	const [isAllSecondPhase, setIsAllSecondPhase] = useState(false);
 	const [isAllThirdPhase, setIsAllThirdPhase] = useState(false);
+	const [loading, setLoading] = useState(false);
 
 	const load = async () => {
 		try {
@@ -113,7 +90,10 @@ const Profile = () => {
 				const sessionDoc = sessionsRes?.documents[i];
 				const step = sessionDoc.step;
 				const users: any[] = [];
-				const ownerStatus = await getPowerUpStatus(sessionDoc.ownerId);
+				const ownerStatus = await getPowerUpStatus(
+					sessionDoc.ownerId,
+					sessionDoc.$id
+				);
 				users.push({
 					id: sessionDoc.ownerId,
 					invite: ownerStatus.invite,
@@ -125,7 +105,7 @@ const Profile = () => {
 				});
 				for (let j = 0; j < sessionDoc.guestsIds.length; j++) {
 					const guestId = sessionDoc.guestsIds[j];
-					const guestStatus = await getPowerUpStatus(guestId);
+					const guestStatus = await getPowerUpStatus(guestId, sessionDoc.$id);
 					users.push({
 						id: guestId,
 						invite: guestStatus.invite,
@@ -144,7 +124,7 @@ const Profile = () => {
 					users,
 				});
 			}
-			await setSessions(newSessions);
+			setSessions(newSessions);
 			const meFinal = newSessions
 				.flatMap((s) => s.users)
 				.find((u: any) => u.isMe);
@@ -193,8 +173,49 @@ const Profile = () => {
 
 		const unsubscribe = client.subscribe(channel, async (response) => {
 			const eventType = response.events[0];
-			console.log("Received event: ", eventType);
+			const me = await getMyProfile();
 			if (eventType.includes("update")) {
+				const sessionsRes = await getSessionsByUser();
+				const newSessions: any[] = [];
+				for (let i = 0; i < sessionsRes?.documents.length; i++) {
+					const sessionDoc = sessionsRes?.documents[i];
+					const step = sessionDoc.step;
+					const users: any[] = [];
+					const ownerStatus = await getPowerUpStatus(
+						sessionDoc.ownerId,
+						sessionDoc.$id
+					);
+					users.push({
+						id: sessionDoc.ownerId,
+						invite: ownerStatus.invite,
+						firstPhase: ownerStatus.first_phase,
+						secondPhase: ownerStatus.second_phase,
+						thirdPhase: ownerStatus.third_phase,
+						isOwner: true,
+						isMe: sessionDoc.ownerId === me.$id,
+					});
+					for (let j = 0; j < sessionDoc.guestsIds.length; j++) {
+						const guestId = sessionDoc.guestsIds[j];
+						const guestStatus = await getPowerUpStatus(guestId, sessionDoc.$id);
+						users.push({
+							id: guestId,
+							invite: guestStatus.invite,
+							firstPhase: guestStatus.first_phase,
+							secondPhase: guestStatus.second_phase,
+							thirdPhase: guestStatus.third_phase,
+							isOwner: false,
+							isMe: guestId === me.$id,
+						});
+					}
+					newSessions.push({
+						id: sessionDoc.$id,
+						step: step,
+						ownerId: sessionDoc.ownerId,
+						guestsIds: sessionDoc.guestsIds,
+						users,
+					});
+				}
+				setSessions(newSessions);
 				load();
 			}
 		});

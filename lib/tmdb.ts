@@ -1,7 +1,4 @@
-import {
-	getDefaultWatchlist,
-	getWatchlistItems,
-} from "./appwrite/appwriteWatchlist";
+import { getWatchlistItems } from "./appwrite/appwriteWatchlist";
 
 type DBItem = {
 	id: string;
@@ -25,7 +22,7 @@ export type TMDBItem = {
 	runtime?: number;
 	media_type: "movie" | "tv";
 	similar?: boolean;
-	vote_count?: number;
+	vote_count: number;
 };
 
 export type WatchlistItem = {
@@ -48,6 +45,7 @@ type FetchProps = {
 	page?: number;
 	search?: string;
 	itemId?: number;
+	watchlistId?: string;
 };
 
 export const tmdbConfig = {
@@ -125,22 +123,56 @@ export async function getTMDBCredits(itemId: number, type: "movie" | "tv") {
 	}
 }
 
-export async function getMergedDBandTMDBItems(
-	{ type, action, page, search, itemId }: FetchProps,
-	watchlistId?: string
-) {
+export async function getMergedDBandTMDBItems({
+	type,
+	action,
+	page,
+	search,
+	itemId,
+	watchlistId,
+}: FetchProps) {
 	try {
 		const merged: WatchlistItem[] = [];
-		if (action === "find") {
-			let defaultWatchlistId;
-			if (watchlistId === undefined) {
-				const defaultWatchlist = await getDefaultWatchlist();
-				defaultWatchlistId = defaultWatchlist!.$id;
+		let DBItems: any[] = [];
+		if (watchlistId) {
+			DBItems = await getWatchlistItems(watchlistId);
+		}
+		if (DBItems.length === 0) {
+			const TMDBResults = await fetchTMDBItems({
+				type,
+				action,
+				page,
+				search,
+				itemId,
+			});
+			const TMDBItems = TMDBResults.results as TMDBItem[];
+			for (let i = 0; i < TMDBItems.length; i++) {
+				const tmdbItem = TMDBItems[i];
+				if (!tmdbItem) continue;
+				merged.push({
+					db: {
+						id: "",
+						watchList_id: "",
+						tmdb_id: tmdbItem.id,
+						$createdAt: "",
+						$updatedAt: "",
+					},
+					tmdb: {
+						id: tmdbItem.id,
+						title: tmdbItem.title ?? tmdbItem.name,
+						english_title: tmdbItem.english_title,
+						poster_path: tmdbItem.poster_path,
+						overview: tmdbItem.overview,
+						vote_average: tmdbItem.vote_average,
+						vote_count: tmdbItem.vote_count,
+						release_date: tmdbItem.release_date,
+						genre_ids: tmdbItem.genre_ids,
+						media_type: type,
+					},
+				});
 			}
-			const DBItems = await getWatchlistItems(
-				watchlistId ? watchlistId : defaultWatchlistId!
-			);
-
+		}
+		if (DBItems.length > 0) {
 			for (let i = 0; i < DBItems.length; i++) {
 				const dbItem = DBItems[i];
 				const tmdbItem = await fetchTMDBItems({
@@ -164,32 +196,15 @@ export async function getMergedDBandTMDBItems(
 						poster_path: tmdbItem.poster_path,
 						overview: tmdbItem.overview,
 						vote_average: tmdbItem.vote_average,
+						vote_count: tmdbItem.vote_count,
 						release_date: tmdbItem.release_date,
 						genre_ids: tmdbItem.genre_ids,
 						media_type: type,
 					},
 				});
 			}
-			console.log("merged: ", merged[0].tmdb.media_type);
-			return merged;
-		} else {
-			const TMDBItems = await fetchTMDBItems({
-				type,
-				action,
-				page,
-				search,
-				itemId,
-			});
-			if (Array.isArray(TMDBItems)) {
-				return TMDBItems;
-			} else if (TMDBItems?.results && Array.isArray(TMDBItems.results)) {
-				return TMDBItems.results;
-			} else if (TMDBItems && typeof TMDBItems === "object") {
-				return [TMDBItems];
-			} else {
-				return [];
-			}
 		}
+		return merged;
 	} catch (e) {
 		console.log("ERROR occurs in getMergedDBandTMDBItems: ", e);
 	}

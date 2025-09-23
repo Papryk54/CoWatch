@@ -1,6 +1,9 @@
 import { Query } from "react-native-appwrite";
 import { account, config, databases, getMyProfile } from "../appwrite";
-import { afterGroupElimination, afterTinderElimination } from "./appwriteTinderAndGroupPhase";
+import {
+	afterGroupElimination,
+	afterTinderElimination,
+} from "./appwriteTinderAndGroupPhase";
 
 export async function createSession(ownerId: string, guestsIds: string[]) {
 	try {
@@ -12,14 +15,14 @@ export async function createSession(ownerId: string, guestsIds: string[]) {
 						config.databaseId!,
 						config.databasePowerUps!,
 						"unique()",
-						{ user_id }
+						{ user_id, session_id: "unique()" }
 					);
 				} else {
 					return databases.createDocument(
 						config.databaseId!,
 						config.databasePowerUps!,
 						"unique()",
-						{ user_id, invite: true }
+						{ user_id, session_id: "unique()", invite: true }
 					);
 				}
 			})
@@ -37,6 +40,18 @@ export async function createSession(ownerId: string, guestsIds: string[]) {
 				currentUserId: ownerId,
 			}
 		);
+
+		await Promise.all(
+			powerUps.map((p) =>
+				databases.updateDocument(
+					config.databaseId!,
+					config.databasePowerUps!,
+					p.$id,
+					{ session_id: session.$id }
+				)
+			)
+		);
+
 		return session;
 	} catch (e) {
 		console.log(e);
@@ -126,13 +141,20 @@ export async function updateStatus(
 	}
 }
 
-export async function getPowerUpStatus(userId: string) {
+export async function getPowerUpStatus(userId: string, sessionId: string) {
 	const res = await databases.listDocuments(
 		config.databaseId!,
 		config.databasePowerUps!,
-		[Query.equal("user_id", userId)]
+		[Query.equal("user_id", userId), Query.equal("session_id", sessionId)]
 	);
-	const powerDoc = res.documents[0]; // TU JEST BŁĄD - NIE MA SPRAWDZENIA O KTÓRĄ SESHE CHODZI
+
+	if (res.documents.length === 0) {
+		throw new Error(
+			`No power-up document found for user ${userId} in session ${sessionId}`
+		);
+	}
+
+	const powerDoc = res.documents[0];
 	return {
 		fav: powerDoc.fav,
 		skull: powerDoc.skull,

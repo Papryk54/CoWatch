@@ -1,15 +1,19 @@
-import {
-	getMyProfile,
-} from "@/lib/appwrite";
+import LoadingScreen from "@/components/utils/loadingScreen";
+import { getMyProfile } from "@/lib/appwrite";
 import { getMyFriends } from "@/lib/appwrite/appwriteFriends";
 import { createSession } from "@/lib/appwrite/appwritePickerSession";
-import { getMyWatchlists, getWatchlistItems } from "@/lib/appwrite/appwriteWatchlist";
+import {
+	getMyWatchlists,
+	getWatchlistItems,
+} from "@/lib/appwrite/appwriteWatchlist";
+import { fetchTMDBItems } from "@/lib/tmdb";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 
 export default function SessionConfig() {
 	const [friends, setFriends] = useState<any[]>([]);
+	const [loading, setLoading] = useState(false);
 	const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
 	const [watchlists, setWatchlists] = useState<any[]>([]);
 	const [selectedWatchlists, setSelectedWatchlists] = useState<string[]>([]);
@@ -21,15 +25,52 @@ export default function SessionConfig() {
 	const STANDARD_TITLES = 12;
 
 	const load = async () => {
+		setLoading(true);
 		try {
 			const friendsRes = await getMyFriends();
+			console.log("friendsRes: ", friendsRes);
 			setFriends(friendsRes?.documents ?? []);
-			const watchlists = await getMyWatchlists();
-			setWatchlists(watchlists?.documents ?? []);
+			const watchlistsRes = await getMyWatchlists();
+
+			const watchlistsWithItems = await Promise.all(
+				(watchlistsRes?.documents ?? []).map(async (wl: any) => {
+					try {
+						const items = await getWatchlistItems(wl.$id);
+						const enrichedItems = await Promise.all(
+							(items ?? []).map(async (item: any) => {
+								try {
+									const tmdbDetails = await fetchTMDBItems({
+										type: item.type ?? "movie",
+										action: "find",
+										itemId: item.tmdb_id,
+									});
+									return {
+										...item,
+										title: tmdbDetails?.title ?? tmdbDetails?.name,
+										poster_path: tmdbDetails?.poster_path,
+										overview: tmdbDetails?.overview,
+									};
+								} catch (e) {
+									console.log("ERROR occurs in load (fetchTMDBItems): ", e);
+									return item;
+								}
+							})
+						);
+						return { ...wl, watchListItems: enrichedItems };
+					} catch (e) {
+						console.log("ERROR occurs in load (getWatchlistItems): ", e);
+						return { ...wl, watchListItems: [] };
+					}
+				})
+			);
+
+			setWatchlists(watchlistsWithItems);
 			const me = await getMyProfile();
 			setMe(me);
 		} catch (e) {
-			console.log(e);
+			console.log("ERROR occurs in load: ", e);
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -83,6 +124,7 @@ export default function SessionConfig() {
 
 	return (
 		<View className="flex-1 bg-brand-bgc">
+			{loading && <LoadingScreen></LoadingScreen>}
 			<View className="bg-brand-dark rounded-xl p-5 mb-8 shadow-lg">
 				{/* Sekcja znajomych */}
 				<View className="flex-row justify-between items-center mb-5">
@@ -166,7 +208,6 @@ export default function SessionConfig() {
 					showsHorizontalScrollIndicator={false}
 				/>
 
-				{/* Sekcja list */}
 				<Text className="text-text font-rubik-bold mb-3 text-lg">Listy</Text>
 				<FlatList
 					data={watchlists}
@@ -201,7 +242,6 @@ export default function SessionConfig() {
 				/>
 			</View>
 
-			{/* Sekcja z plakatami filmów z wybranych watchlist */}
 			<View className="bg-brand-dark rounded-xl p-4 mb-8">
 				<Text className="text-text font-rubik-bold mb-3 text-lg">
 					Wybrane tytuły
@@ -215,9 +255,11 @@ export default function SessionConfig() {
 					renderItem={({ item }) => {
 						return (
 							<View className="mr-3 items-center">
-								{item.poster ? (
+								{item.poster_path ? ( 
 									<Image
-										source={{ uri: item.poster }}
+										source={{
+											uri: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+										}}
 										className="w-24 h-36 rounded-lg object-cover"
 									/>
 								) : (

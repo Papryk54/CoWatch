@@ -1,4 +1,5 @@
 import ProgressBar from "@/components/ui/progressBar";
+import LoadingScreen from "@/components/utils/loadingScreen";
 import { config, databases, getMyProfile } from "@/lib/appwrite";
 import {
 	getPowerUpStatus,
@@ -125,7 +126,7 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 			const me = await getMyProfile();
 			let pointsToAdd: number;
 			try {
-				const powerUpStatus = await getPowerUpStatus(me.$id);
+				const powerUpStatus = await getPowerUpStatus(me.$id, sessionId);
 				if (type === "fav") {
 					if (powerUpStatus.fav <= 0) {
 						isPowerUpAnimating.current = false;
@@ -411,6 +412,7 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 	return (
 		<View className="flex-1 bg-brand-bgc items-center justify-center -mx-6 -my-6">
 			{/* Pasek postępu na górze jako osobny komponent */}
+			{loading && <LoadingScreen></LoadingScreen>}
 			{!loading && !err && movie && (
 				<ProgressBar index={index} movies={movies} />
 			)}
@@ -596,21 +598,6 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 					</Animated.View>
 
 					<View className="flex-row justify-between items-center mb-8 w-[80%]">
-						<View className="flex-1 items-center">
-							<Pressable
-								onPress={() => handlePowerUp("fav")}
-								className="rounded-2xl w-full"
-								style={{
-									paddingVertical: 12,
-									opacity: showFavAnimation || showSkullAnimation ? 0.5 : 1,
-								}}
-								disabled={showFavAnimation || showSkullAnimation}
-							>
-								<View className="items-center flex justify-center ">
-									<Text className="text-text text-5xl mb-2">💖</Text>
-								</View>
-							</Pressable>
-						</View>
 						<View className="flex-1 items-center ml-2">
 							<Pressable
 								onPress={() => handlePowerUp("skull")}
@@ -623,6 +610,21 @@ const TinderPhase = ({ sessionId, onDone }: Props) => {
 							>
 								<View className="items-center flex justify-center">
 									<Text className="text-text text-5xl">💀</Text>
+								</View>
+							</Pressable>
+						</View>
+						<View className="flex-1 items-center">
+							<Pressable
+								onPress={() => handlePowerUp("fav")}
+								className="rounded-2xl w-full"
+								style={{
+									paddingVertical: 12,
+									opacity: showFavAnimation || showSkullAnimation ? 0.5 : 1,
+								}}
+								disabled={showFavAnimation || showSkullAnimation}
+							>
+								<View className="items-center flex justify-center ">
+									<Text className="text-text text-5xl mb-2">💖</Text>
 								</View>
 							</Pressable>
 						</View>

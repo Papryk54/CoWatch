@@ -55,7 +55,9 @@ export function MovieTile({ item, placeholder }: Props) {
 			onResponderRelease={() => setPressed(false)}
 			onResponderTerminate={() => setPressed(false)}
 		>
-			<Link href={`/(root)/properties/${item.tmdb.id}/?type=${item.tmdb.media_type}`}>
+			<Link
+				href={`/(root)/properties/${item.tmdb.id}/?type=${item.tmdb.media_type}`}
+			>
 				<ImageBackground
 					source={src}
 					className="w-full h-full"

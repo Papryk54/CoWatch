@@ -112,8 +112,8 @@ export async function afterGroupElimination(sessionId: string) {
 		finalItems.sort((a: any, b: any) => b.score - a.score);
 		for (let i = 0; i < finalItems.length; i++) {
 			if (finalItems.length === 6) {
-				if (i <= 5 && i > 3) {
-					// 4,5
+				if (i <= 5 && i > 2) {
+					// 3,4,5
 					await databases.updateDocument(
 						config.databaseId!,
 						config.databaseMultiStepPickerItems!,
@@ -121,8 +121,8 @@ export async function afterGroupElimination(sessionId: string) {
 						{ hearts: 1 }
 					);
 					continue;
-				} else if (i <= 3 && i > 1) {
-					// 2,3
+				} else if (i <= 2 && i > 0) {
+					// 1,2
 					await databases.updateDocument(
 						config.databaseId!,
 						config.databaseMultiStepPickerItems!,
@@ -130,8 +130,8 @@ export async function afterGroupElimination(sessionId: string) {
 						{ hearts: 2 }
 					);
 					continue;
-				} else if (i <= 1 && i >= 0) {
-					// 0,1
+				} else if (i === 0) {
+					// 0
 					await databases.updateDocument(
 						config.databaseId!,
 						config.databaseMultiStepPickerItems!,
@@ -141,8 +141,8 @@ export async function afterGroupElimination(sessionId: string) {
 				}
 			}
 			if (finalItems.length === 10) {
-				if (i <= 9 && i > 6) {
-					// 7,8,9
+				if (i <= 9 && i > 4) {
+					// 5,6,7,8,9
 					await databases.updateDocument(
 						config.databaseId!,
 						config.databaseMultiStepPickerItems!,
@@ -150,8 +150,8 @@ export async function afterGroupElimination(sessionId: string) {
 						{ hearts: 1 }
 					);
 					continue;
-				} else if (i <= 5 && i > 3) {
-					// 4,5,6
+				} else if (i <= 4 && i > 1) {
+					// 2,3,4
 					await databases.updateDocument(
 						config.databaseId!,
 						config.databaseMultiStepPickerItems!,
@@ -159,8 +159,8 @@ export async function afterGroupElimination(sessionId: string) {
 						{ hearts: 2 }
 					);
 					continue;
-				} else if (i <= 3 && i >= 0) {
-					// 0,1,2,3
+				} else if (i <= 1 && i >= 0) {
+					// 0,1
 					await databases.updateDocument(
 						config.databaseId!,
 						config.databaseMultiStepPickerItems!,

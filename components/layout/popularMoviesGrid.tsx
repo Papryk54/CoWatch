@@ -13,10 +13,7 @@ export function PopularMoviesGrid(props: {
 	useEffect(() => {
 		getMergedDBandTMDBItems({ type: props.type, action: "popular", page: 1 })
 			.then((res) => {
-				const mapped = Array.isArray(res)
-					? res.map((tmdb) => ({ db: {} as any, tmdb }))
-					: [];
-				setData(mapped);
+				setData(res ?? []);
 			})
 			.finally(() => setLoading(false));
 	}, [props.type]);
